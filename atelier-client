@@ -9,8 +9,8 @@ set -euo pipefail
 # --- Configuration ---
 
 # Allow overriding via environment variables
-HOST="${ATELIER_HOST:-workstation}"
-REMOTE_SERVER_PATH="${ATELIER_REMOTE_PATH:-~/.local/bin/atelier-server}"
+HOST="${ATELIER_HOST:-localhost}"
+SERVER_PATH="${ATELIER_REMOTE_PATH:-~/.local/bin/atelier-server}"
 
 # Available actions
 ACTIONS=("edit" "shell" "opencode")
@@ -18,108 +18,108 @@ ACTIONS=("edit" "shell" "opencode")
 # --- Utilities ---
 
 log_error() {
-    printf "Error: %s\n" "$1" >&2
+  printf "Error: %s\n" "$1" >&2
 }
 
 check_dependencies() {
-    local missing=0
-    for cmd in ssh fzf; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            log_error "Missing required command: $cmd"
-            missing=1
-        fi
-    done
-    if [[ $missing -eq 1 ]]; then
-        exit 1
+  local missing=0
+  for cmd in ssh fzf; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      log_error "Missing required command: $cmd"
+      missing=1
     fi
+  done
+  if [[ $missing -eq 1 ]]; then
+    exit 1
+  fi
 }
 
 # --- Commands ---
 
 cmd_interactive_launch() {
-    local mode="${1:-}"
-    local prompt_text="Locations (Recents) ➜ "
-    local locations_arg=""
+  local mode="${1:-}"
+  local prompt_text="Locations (Recents) ➜ "
+  local locations_arg=""
 
-    if [[ "$mode" == "-all" || "$mode" == "all" ]]; then
-        locations_arg="all"
-        prompt_text="Locations (All) ➜ "
-    fi
+  if [[ "$mode" == "-all" || "$mode" == "all" ]]; then
+    locations_arg="all"
+    prompt_text="Locations (All) ➜ "
+  fi
 
-    # 1. Fetch locations from remote
-    # We use -q to suppress banners/motd which would corrupt the list
-    local raw_paths
-    if ! raw_paths=$(ssh -q "$HOST" "$REMOTE_SERVER_PATH locations $locations_arg" 2>/dev/null); then
-        log_error "Failed to fetch locations from $HOST."
-        log_error "Make sure '$REMOTE_SERVER_PATH' exists on the remote host."
-        exit 1
-    fi
+  # 1. Fetch locations from remote
+  # We use -q to suppress banners/motd which would corrupt the list
+  local raw_paths
+  if ! raw_paths=$(ssh -q "$HOST" "$REMOTE_SERVER_PATH locations $locations_arg" 2>/dev/null); then
+    log_error "Failed to fetch locations from $HOST."
+    log_error "Make sure '$REMOTE_SERVER_PATH' exists on the remote host."
+    exit 1
+  fi
 
-    if [[ -z "$raw_paths" ]]; then
-        log_error "No locations found on $HOST."
-        exit 1
-    fi
+  if [[ -z "$raw_paths" ]]; then
+    log_error "No locations found on $HOST."
+    exit 1
+  fi
 
-    # 2. Build FZF input list
-    # Format: "Name (Action) <TAB> Path <TAB> Action"
-    local input_list=""
-    
-    # Process paths and build list (pure bash string manipulation is fast enough here)
-    while IFS= read -r path; do
-        [[ -z "$path" ]] && continue
-        
-        local name
-        name=$(basename "$path")
-        [[ "$path" == "/" ]] && name="/"
-        
-        # Append all actions for this path
-        for action in "${ACTIONS[@]}"; do
-            input_list+="${name} (${action})\t${path}\t${action}"$'\n'
-        done
-    done <<< "$raw_paths"
+  # 2. Build FZF input list
+  # Format: "Name (Action) <TAB> Path <TAB> Action"
+  local input_list=""
 
-    # 3. Select with FZF
-    local selected
-    selected=$(echo -e "$input_list" | fzf \
-        --height=40% \
-        --layout=reverse \
-        --border \
-        --delimiter="\t" \
-        --with-nth=1 \
-        --prompt="$prompt_text" \
-        --header="Select Location" || true)
+  # Process paths and build list (pure bash string manipulation is fast enough here)
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
 
-    if [[ -z "$selected" ]]; then
-        # User cancelled
-        exit 0
-    fi
+    local name
+    name=$(basename "$path")
+    [[ "$path" == "/" ]] && name="/"
 
-    # 4. Extract Data
-    local location
-    local action
-    location=$(echo "$selected" | cut -f2)
-    action=$(echo "$selected" | cut -f3)
+    # Append all actions for this path
+    for action in "${ACTIONS[@]}"; do
+      input_list+="${name} (${action})\t${path}\t${action}"$'\n'
+    done
+  done <<<"$raw_paths"
 
-    # 5. Launch
-    cmd_direct_launch "$location" "$action"
+  # 3. Select with FZF
+  local selected
+  selected=$(echo -e "$input_list" | fzf \
+    --height=40% \
+    --layout=reverse \
+    --border \
+    --delimiter="\t" \
+    --with-nth=1 \
+    --prompt="$prompt_text" \
+    --header="Select Location" || true)
+
+  if [[ -z "$selected" ]]; then
+    # User cancelled
+    exit 0
+  fi
+
+  # 4. Extract Data
+  local location
+  local action
+  location=$(echo "$selected" | cut -f2)
+  action=$(echo "$selected" | cut -f3)
+
+  # 5. Launch
+  cmd_direct_launch "$location" "$action"
 }
 
 cmd_direct_launch() {
-    local location="${1:-}"
-    local action="${2:-}"
+  local location="${1:-}"
+  local action="${2:-}"
 
-    if [[ -z "$location" || -z "$action" ]]; then
-        log_error "Usage: direct <location> <action>"
-        exit 1
-    fi
+  if [[ -z "$location" || -z "$action" ]]; then
+    log_error "Usage: direct <location> <action>"
+    exit 1
+  fi
 
-    # Launch remote session
-    # -t forces TTY allocation which is required for interactive sessions (vim, shell)
-    exec ssh -t "$HOST" "$REMOTE_SERVER_PATH session \"$location\" \"$action\""
+  # Launch remote session
+  # -t forces TTY allocation which is required for interactive sessions (vim, shell)
+  exec ssh -t "$HOST" "$REMOTE_SERVER_PATH session \"$location\" \"$action\""
 }
 
 usage() {
-    cat <<EOF
+  cat <<EOF
 Usage: $(basename "$0") [command] [args...]
 
 Commands:
@@ -135,40 +135,40 @@ EOF
 # --- Main ---
 
 main() {
-    check_dependencies
+  check_dependencies
 
-    local command="${1:-}"
-    
-    # Handle flags passed as first argument (e.g. `atelier -all`)
-    if [[ "$command" == "-all" ]]; then
-        cmd_interactive_launch "-all"
-        exit 0
-    fi
+  local command="${1:-}"
 
-    # Default to interactive launch if no command provided
-    if [[ -z "$command" ]]; then
-        cmd_interactive_launch
-        exit 0
-    fi
+  # Handle flags passed as first argument (e.g. `atelier -all`)
+  if [[ "$command" == "-all" ]]; then
+    cmd_interactive_launch "-all"
+    exit 0
+  fi
 
-    shift || true # Remove command from args
+  # Default to interactive launch if no command provided
+  if [[ -z "$command" ]]; then
+    cmd_interactive_launch
+    exit 0
+  fi
 
-    case "$command" in
-        launch)
-            cmd_interactive_launch "$@"
-            ;;
-        direct)
-            cmd_direct_launch "$@"
-            ;;
-        help|--help|-h)
-            usage
-            ;;
-        *)
-            log_error "Unknown command: $command"
-            usage
-            exit 1
-            ;;
-    esac
+  shift || true # Remove command from args
+
+  case "$command" in
+  launch)
+    cmd_interactive_launch "$@"
+    ;;
+  direct)
+    cmd_direct_launch "$@"
+    ;;
+  help | --help | -h)
+    usage
+    ;;
+  *)
+    log_error "Unknown command: $command"
+    usage
+    exit 1
+    ;;
+  esac
 }
 
 main "$@"
