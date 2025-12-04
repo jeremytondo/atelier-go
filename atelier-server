@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =============================================================================
+# Atelier Server
+# Remote endpoint for listing locations and managing development sessions.
+# =============================================================================
+
+# --- Shell Setup ---
+
+# Make sure the XDG_RUNTIME_DIR is set up when running commands other than shell
+# This ensures Shpool has a place to store environment data.
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+# --- Utilities ---
+
+log_error() {
+  printf "Error: %s\n" "$1" >&2
+}
+
+# --- Commands ---
+
+cmd_locations() {
+  local mode="${1:-}"
+
+  if [[ "$mode" == "all" ]]; then
+    # DEEP SCAN: Find directories up to depth 3
+    # Prune hidden directories for performance and cleanliness
+    find "${HOME}" -maxdepth 3 -type d -not -path '*/.*' 2>/dev/null || true
+    echo "${HOME}"
+  else
+    # FAST SCAN: Use Zoxide if available
+    if command -v zoxide >/dev/null 2>&1; then
+      zoxide query -l
+    else
+      # Fallback if zoxide is missing
+      echo "${HOME}"
+    fi
+  fi
+}
+
+cmd_session() {
+  local location="${1:-}"
+  local action="${2:-}"
+
+  # Validation
+  if [[ -z "$location" || -z "$action" ]]; then
+    log_error "Usage: session <location> <action>"
+    exit 1
+  fi
+
+  # Strip potential carriage returns from SSH transmission
+  location="${location//$'\r'/}"
+  action="${action//$'\r'/}"
+
+  if [[ ! -d "$location" ]]; then
+    log_error "Directory '$location' does not exist."
+    exit 1
+  fi
+
+  # Check for shpool
+  if ! command -v shpool >/dev/null 2>&1; then
+    log_error "shpool is not installed on this server."
+    exit 1
+  fi
+
+  # Configuration
+  local session_name="${location}:${action}"
+  local window_title="${location} — ${action}"
+  local cmd=""
+
+  case "$action" in
+  "edit")
+    # Prefer nvim, fall back to vim, then vi
+    if command -v nvim >/dev/null 2>&1; then
+      cmd="nvim ."
+    elif command -v vim >/dev/null 2>&1; then
+      cmd="vim ."
+    else cmd="vi ."; fi
+    ;;
+  "opencode")
+    cmd="opencode"
+    ;;
+  "shell")
+    cmd="${SHELL:-/bin/bash} -l"
+    ;;
+  *)
+    cmd="${SHELL:-/bin/bash}"
+    ;;
+  esac
+
+  # Set Terminal Window Title (passed through SSH)
+  printf "\033]2;%s\007" "$window_title"
+
+  # Launch Session
+  exec shpool attach \
+    --dir "$location" \
+    --cmd "$cmd" \
+    "$session_name"
+}
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") <command> [args...]
+
+Commands:
+    locations [all]              List project locations
+    session <location> <action>  Start/Attach to a session
+EOF
+}
+
+# --- Main ---
+
+main() {
+  local command="${1:-}"
+  shift || true
+
+  case "$command" in
+  locations)
+    cmd_locations "$@"
+    ;;
+  session)
+    cmd_session "$@"
+    ;;
+  help | --help | -h)
+    usage
+    ;;
+  *)
+    if [[ -n "$command" ]]; then
+      log_error "Unknown command: $command"
+    fi
+    usage
+    exit 1
+    ;;
+  esac
+}
+
+main "$@"
