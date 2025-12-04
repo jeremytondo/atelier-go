@@ -49,9 +49,9 @@ cmd_interactive_launch() {
   # 1. Fetch locations from remote
   # We use -q to suppress banners/motd which would corrupt the list
   local raw_paths
-  if ! raw_paths=$(ssh -q "$HOST" "$REMOTE_SERVER_PATH locations $locations_arg" 2>/dev/null); then
+  if ! raw_paths=$(ssh -q "$HOST" "$SERVER_PATH locations $locations_arg" 2>/dev/null); then
     log_error "Failed to fetch locations from $HOST."
-    log_error "Make sure '$REMOTE_SERVER_PATH' exists on the remote host."
+    log_error "Make sure '$SERVER_PATH' exists on the remote host."
     exit 1
   fi
 
@@ -115,7 +115,7 @@ cmd_direct_launch() {
 
   # Launch remote session
   # -t forces TTY allocation which is required for interactive sessions (vim, shell)
-  exec ssh -t "$HOST" "$REMOTE_SERVER_PATH session \"$location\" \"$action\""
+  exec ssh -t "$HOST" "$SERVER_PATH session \"$location\" \"$action\""
 }
 
 usage() {
@@ -128,7 +128,7 @@ Commands:
     
 Environment:
     ATELIER_HOST               Remote SSH host (default: $HOST)
-    ATELIER_REMOTE_PATH        Remote server script path (default: $REMOTE_SERVER_PATH)
+    ATELIER_REMOTE_PATH        Remote server script path (default: $SERVER_PATH)
 EOF
 }
 
