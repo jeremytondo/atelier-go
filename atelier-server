@@ -12,6 +12,13 @@ log_error() {
   printf "Error: %s\n" "$1" >&2
 }
 
+ensure_shpool() {
+  if ! command -v shpool >/dev/null 2>&1; then
+    log_error "shpool is not installed on this server."
+    exit 1
+  fi
+}
+
 get_open_sessions() {
   if command -v shpool >/dev/null 2>&1; then
     # Parse the first column of shpool list output (skipping header)
@@ -81,14 +88,12 @@ cmd_session() {
   if [[ "$location" == * ]]; then
     # Strip the icon and spaces to get the session name
     local session_name="${location#  }"
-    
-    # Check for shpool
-    if ! command -v shpool >/dev/null 2>&1; then
-      log_error "shpool is not installed on this server."
-      exit 1
-    fi
 
-    exec shpool attach "$session_name"
+    # Check for shpool
+    ensure_shpool
+
+    # Force detach existing clients and attach
+    exec shpool attach -f "$session_name"
   fi
 
   if [[ -z "$action" ]]; then
@@ -102,10 +107,7 @@ cmd_session() {
   fi
 
   # Check for shpool
-  if ! command -v shpool >/dev/null 2>&1; then
-    log_error "shpool is not installed on this server."
-    exit 1
-  fi
+  ensure_shpool
 
   # Configuration
   local session_name="[${location}:${action}]"
