@@ -18,8 +18,12 @@ load_config() {
     source "$config_file"
 
     # Restore environment overrides
-    [[ -n "$env_host" ]] && ATELIER_HOST="$env_host"
-    [[ -n "$env_remote_path" ]] && ATELIER_REMOTE_PATH="$env_remote_path"
+    if [[ -n "$env_host" ]]; then
+      ATELIER_HOST="$env_host"
+    fi
+    if [[ -n "$env_remote_path" ]]; then
+      ATELIER_REMOTE_PATH="$env_remote_path"
+    fi
   fi
 }
 
