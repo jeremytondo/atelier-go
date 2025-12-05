@@ -14,21 +14,26 @@ log_error() {
 
 # --- Commands ---
 
+cmd_actions() {
+  echo "edit"
+  echo "shell"
+  echo "opencode"
+}
+
 cmd_locations() {
   local mode="${1:-}"
 
+  # Always include Home directory at the top
+  echo "${HOME}"
+
   if [[ "$mode" == "all" ]]; then
     # DEEP SCAN: Find directories up to depth 3
-    # Prune hidden directories for performance and cleanliness
-    find "${HOME}" -maxdepth 3 -type d -not -path '*/.*' 2>/dev/null || true
-    echo "${HOME}"
+    # Prune hidden directories and the home directory itself (since we added it above)
+    find "${HOME}" -maxdepth 3 -mindepth 1 -type d 2>/dev/null || true
   else
     # FAST SCAN: Use Zoxide if available
     if command -v zoxide >/dev/null 2>&1; then
       zoxide query -l
-    else
-      # Fallback if zoxide is missing
-      echo "${HOME}"
     fi
   fi
 }
@@ -112,6 +117,9 @@ main() {
   case "$command" in
   locations)
     cmd_locations "$@"
+    ;;
+  actions)
+    cmd_actions "$@"
     ;;
   session)
     cmd_session "$@"

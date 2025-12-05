@@ -46,8 +46,7 @@ cmd_interactive_launch() {
     prompt_text="Locations (All) ➜ "
   fi
 
-  # 1. Fetch locations from remote
-  # We use -q to suppress banners/motd which would corrupt the list
+  # Fetch locations from remote
   local raw_paths
   if ! raw_paths=$(ssh -q "$HOST" "$SERVER_PATH locations $locations_arg" 2>/dev/null); then
     log_error "Failed to fetch locations from $HOST."
@@ -60,47 +59,40 @@ cmd_interactive_launch() {
     exit 1
   fi
 
-  # 2. Build FZF input list
-  # Format: "Name (Action) <TAB> Path <TAB> Action"
-  local input_list=""
-
-  # Process paths and build list (pure bash string manipulation is fast enough here)
-  while IFS= read -r path; do
-    [[ -z "$path" ]] && continue
-
-    local name
-    name=$(basename "$path")
-    [[ "$path" == "/" ]] && name="/"
-
-    # Append all actions for this path
-    for action in "${ACTIONS[@]}"; do
-      input_list+="${name} (${action})\t${path}\t${action}"$'\n'
-    done
-  done <<<"$raw_paths"
-
-  # 3. Select with FZF
-  local selected
-  selected=$(echo -e "$input_list" | fzf \
+  # Select location
+  local location
+  location=$(echo "$raw_paths" | fzf \
     --height=40% \
     --layout=reverse \
     --border \
-    --delimiter="\t" \
-    --with-nth=1 \
     --prompt="$prompt_text" \
     --header="Select Location" || true)
 
-  if [[ -z "$selected" ]]; then
-    # User cancelled
+  if [[ -z "$location" ]]; then
     exit 0
   fi
 
-  # 4. Extract Data
-  local location
-  local action
-  location=$(echo "$selected" | cut -f2)
-  action=$(echo "$selected" | cut -f3)
+  # Fetch available actions
+  local raw_actions
+  if ! raw_actions=$(ssh -q "$HOST" "$SERVER_PATH actions \"$location\"" 2>/dev/null); then
+    log_error "Failed to fetch actions from $HOST."
+    exit 1
+  fi
 
-  # 5. Launch
+  # Select action
+  local action
+  action=$(echo "$raw_actions" | fzf \
+    --height=20% \
+    --layout=reverse \
+    --border \
+    --prompt="Action ➜ " \
+    --header="Select Action for $(basename "$location")" || true)
+
+  if [[ -z "$action" ]]; then
+    exit 0
+  fi
+
+  # Launch
   cmd_direct_launch "$location" "$action"
 }
 
