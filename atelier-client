@@ -8,6 +8,23 @@ set -euo pipefail
 
 # --- Configuration ---
 
+load_config() {
+  local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/atelier/config"
+  if [[ -f "$config_file" ]]; then
+    # Preserve environment overrides
+    local env_host="${ATELIER_HOST:-}"
+    local env_remote_path="${ATELIER_REMOTE_PATH:-}"
+
+    source "$config_file"
+
+    # Restore environment overrides
+    [[ -n "$env_host" ]] && ATELIER_HOST="$env_host"
+    [[ -n "$env_remote_path" ]] && ATELIER_REMOTE_PATH="$env_remote_path"
+  fi
+}
+
+load_config
+
 # Allow overriding via environment variables
 HOST="${ATELIER_HOST:-localhost}"
 SERVER_PATH="${ATELIER_REMOTE_PATH:-~/.local/bin/atelier-server}"
