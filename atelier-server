@@ -12,6 +12,17 @@ log_error() {
   printf "Error: %s\n" "$1" >&2
 }
 
+get_open_sessions() {
+  if command -v shpool >/dev/null 2>&1; then
+    # Parse the first column of shpool list output (skipping header)
+    shpool list | awk 'NR>1 {print $1}' | while read -r session; do
+      if [[ -n "$session" ]]; then
+        echo "  $session"
+      fi
+    done
+  fi
+}
+
 # --- Commands ---
 
 cmd_actions() {
@@ -23,7 +34,21 @@ cmd_actions() {
 cmd_locations() {
   local mode="${1:-}"
 
-  # Always include Home directory at the top
+  # Fetch open sessions
+  local sessions
+  sessions=$(get_open_sessions)
+
+  if [[ "$mode" == "open" ]]; then
+    echo "$sessions"
+    return
+  fi
+
+  # For all/frequent, show sessions at the top
+  if [[ -n "$sessions" ]]; then
+    echo "$sessions"
+  fi
+
+  # Always include Home directory
   echo "${HOME}"
 
   if [[ "$mode" == "all" ]]; then
@@ -43,7 +68,7 @@ cmd_session() {
   local action="${2:-}"
 
   # Validation
-  if [[ -z "$location" || -z "$action" ]]; then
+  if [[ -z "$location" ]]; then
     log_error "Usage: session <location> <action>"
     exit 1
   fi
@@ -51,6 +76,25 @@ cmd_session() {
   # Strip potential carriage returns from SSH transmission
   location="${location//$'\r'/}"
   action="${action//$'\r'/}"
+
+  # Check for existing session attachment
+  if [[ "$location" == * ]]; then
+    # Strip the icon and spaces to get the session name
+    local session_name="${location#  }"
+    
+    # Check for shpool
+    if ! command -v shpool >/dev/null 2>&1; then
+      log_error "shpool is not installed on this server."
+      exit 1
+    fi
+
+    exec shpool attach "$session_name"
+  fi
+
+  if [[ -z "$action" ]]; then
+    log_error "Usage: session <location> <action>"
+    exit 1
+  fi
 
   if [[ ! -d "$location" ]]; then
     log_error "Directory '$location' does not exist."

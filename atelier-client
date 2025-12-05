@@ -44,6 +44,9 @@ cmd_interactive_launch() {
   if [[ "$mode" == "-all" || "$mode" == "all" ]]; then
     locations_arg="all"
     prompt_text="Locations (All) ➜ "
+  elif [[ "$mode" == "-open" || "$mode" == "open" ]]; then
+    locations_arg="open"
+    prompt_text="Locations (Open) ➜ "
   fi
 
   # Fetch locations from remote
@@ -69,6 +72,12 @@ cmd_interactive_launch() {
     --header="Select Location" || true)
 
   if [[ -z "$location" ]]; then
+    exit 0
+  fi
+
+  # If an open session is selected (starts with icon), skip action selection
+  if [[ "$location" == * ]]; then
+    cmd_direct_launch "$location" "attach"
     exit 0
   fi
 
@@ -115,7 +124,7 @@ usage() {
 Usage: $(basename "$0") [command] [args...]
 
 Commands:
-    launch [-all]              Interactive launcher (default)
+    launch [-all|-open]        Interactive launcher (default: frequent)
     direct <location> <action> Connect to specific location directly
     
 Environment:
@@ -131,15 +140,25 @@ main() {
 
   local command="${1:-}"
 
-  # Handle flags passed as first argument (e.g. `atelier -all`)
-  if [[ "$command" == "-all" ]]; then
-    cmd_interactive_launch "-all"
+  # Handle flags passed as first argument
+  case "$command" in
+  -all)
+    cmd_interactive_launch "all"
     exit 0
-  fi
+    ;;
+  -open)
+    cmd_interactive_launch "open"
+    exit 0
+    ;;
+  -frequent)
+    cmd_interactive_launch "frequent"
+    exit 0
+    ;;
+  esac
 
   # Default to interactive launch if no command provided
   if [[ -z "$command" ]]; then
-    cmd_interactive_launch
+    cmd_interactive_launch "frequent"
     exit 0
   fi
 
