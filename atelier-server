@@ -6,14 +6,6 @@ set -euo pipefail
 # Remote endpoint for listing locations and managing development sessions.
 # =============================================================================
 
-# --- Shell Setup ---
-
-# Make sure the XDG_RUNTIME_DIR is set up when running commands other than shell
-# This ensures Shpool has a place to store environment data.
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-mkdir -p "$XDG_RUNTIME_DIR"
-chmod 700 "$XDG_RUNTIME_DIR"
-
 # --- Utilities ---
 
 log_error() {
@@ -67,7 +59,7 @@ cmd_session() {
   fi
 
   # Configuration
-  local session_name="${location}:${action}"
+  local session_name="[${location}:${action}]"
   local window_title="${location} — ${action}"
   local cmd=""
 
