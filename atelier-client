@@ -13,7 +13,7 @@ load_config() {
   if [[ -f "$config_file" ]]; then
     # Preserve environment overrides
     local env_host="${ATELIER_HOST:-}"
-    local env_remote_path="${ATELIER_REMOTE_PATH:-}"
+    local env_remote_path="${ATELIER_SERVER_PATH:-}"
 
     source "$config_file"
 
@@ -22,7 +22,7 @@ load_config() {
       ATELIER_HOST="$env_host"
     fi
     if [[ -n "$env_remote_path" ]]; then
-      ATELIER_REMOTE_PATH="$env_remote_path"
+      ATELIER_SERVER_PATH="$env_remote_path"
     fi
   fi
 }
@@ -31,7 +31,7 @@ load_config
 
 # Allow overriding via environment variables
 HOST="${ATELIER_HOST:-localhost}"
-SERVER_PATH="${ATELIER_REMOTE_PATH:-~/.local/bin/atelier-server}"
+SERVER_PATH="${ATELIER_SERVER_PATH:-~/.local/bin/atelier-server}"
 
 # Available actions
 ACTIONS=("edit" "shell" "opencode")
@@ -150,7 +150,7 @@ Commands:
     
 Environment:
     ATELIER_HOST               Remote SSH host (default: $HOST)
-    ATELIER_REMOTE_PATH        Remote server script path (default: $SERVER_PATH)
+    ATELIER_SERVER_PATH        Remote server script path (default: $SERVER_PATH)
 EOF
 }
 
