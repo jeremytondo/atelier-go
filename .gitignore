@@ -1,0 +1,11 @@
+# Binaries
+bin/
+dist/
+atelier-go
+
+# OS specific
+.DS_Store
+
+# Editor specific
+.vscode/
+.idea/
