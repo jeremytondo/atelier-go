@@ -25,7 +25,16 @@ var clientCmd = &cobra.Command{
 	Use:   "client",
 	Short: "Connect to the Atelier daemon",
 	Run: func(cmd *cobra.Command, args []string) {
-		runClient()
+		all, _ := cmd.Flags().GetBool("all")
+		sessions, _ := cmd.Flags().GetBool("sessions")
+
+		filter := "frequent"
+		if sessions {
+			filter = "sessions"
+		} else if all {
+			filter = "all"
+		}
+		runClient(filter)
 	},
 }
 
@@ -51,11 +60,13 @@ var clientLoginCmd = &cobra.Command{
 }
 
 func init() {
+	clientCmd.Flags().BoolP("all", "a", false, "Show all directories in home")
+	clientCmd.Flags().BoolP("sessions", "s", false, "Show open sessions only")
 	rootCmd.AddCommand(clientCmd)
 	clientCmd.AddCommand(clientLoginCmd)
 }
 
-func runClient() {
+func runClient(filter string) {
 	host := viper.GetString("host")
 	if host == "" {
 		host = "localhost"
@@ -75,7 +86,7 @@ func runClient() {
 	}
 
 	// 2. Fetch Locations
-	url := fmt.Sprintf("http://%s:%d/api/locations", host, port)
+	url := fmt.Sprintf("http://%s:%d/api/locations?filter=%s", host, port, filter)
 	locations, err := fetchLocations(url, token)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error connecting to Atelier Daemon at %s: %v\n", url, err)
@@ -240,6 +251,7 @@ func createNewSession(host, path, action string) {
 		"printf", "\"\\033]2;%s\\007\"", quotedSessionName,
 		"&&",
 		"shpool", "attach",
+
 		"--dir", fmt.Sprintf("'%s'", path),
 		"--cmd", fmt.Sprintf("\"%s\"", cmd),
 		quotedSessionName,
