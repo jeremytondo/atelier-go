@@ -18,6 +18,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+func printStartupBanner(addr, token string) {
+	fmt.Println("┌──────────────────────────────────────────────────────────────┐")
+	fmt.Println("│  Atelier Server started!                                     │")
+	fmt.Printf("│  Address: %-51s│\n", addr)
+	fmt.Println("│                                                              │")
+	fmt.Println("│  Token:                                                      │")
+	fmt.Printf("│  %s                            │\n", token)
+	fmt.Println("│                                                              │")
+	fmt.Println("│  To connect, run on client:                                  │")
+	fmt.Printf("│  atelier-go client login %s    │\n", token)
+	fmt.Println("└──────────────────────────────────────────────────────────────┘")
+}
+
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start the Atelier daemon",
@@ -30,14 +43,16 @@ var serverCmd = &cobra.Command{
 		addr := fmt.Sprintf("%s:%d", host, port)
 
 		// Initialize Token
-		tokenPath := os.ExpandEnv("$HOME/.config/atelier/token")
+		tokenPath, err := auth.GetDefaultTokenPath()
+		if err != nil {
+			log.Fatalf("Failed to get token path: %v", err)
+		}
 		token, err := auth.LoadOrCreateToken(tokenPath)
 		if err != nil {
 			log.Fatalf("Failed to initialize token: %v", err)
 		}
 
-		fmt.Printf("Atelier Server starting on %s\n", addr)
-		fmt.Printf("Token: %s\n", token)
+		printStartupBanner(addr, token)
 
 		// Setup Router
 		mux := http.NewServeMux()
@@ -107,6 +122,22 @@ var serverStartCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Server started in background (PID: %d)\n", startCmd.Process.Pid)
+
+		// Print the banner for the user
+		host := viper.GetString("host")
+		if host == "" {
+			host = "0.0.0.0"
+		}
+		port := viper.GetInt("port")
+		addr := fmt.Sprintf("%s:%d", host, port)
+
+		tokenPath, err := auth.GetDefaultTokenPath()
+		if err == nil {
+			token, err := auth.LoadOrCreateToken(tokenPath)
+			if err == nil {
+				printStartupBanner(addr, token)
+			}
+		}
 	},
 }
 
@@ -215,6 +246,24 @@ WantedBy=default.target
 	},
 }
 
+var serverTokenCmd = &cobra.Command{
+	Use:   "token",
+	Short: "Print the current authentication token",
+	Run: func(cmd *cobra.Command, args []string) {
+		tokenPath, err := auth.GetDefaultTokenPath()
+		if err != nil {
+			log.Fatalf("Failed to get token path: %v", err)
+		}
+
+		token, err := auth.LoadOrCreateToken(tokenPath)
+		if err != nil {
+			log.Fatalf("Failed to load token: %v", err)
+		}
+
+		fmt.Println(token)
+	},
+}
+
 var serverStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check the status of the Atelier daemon",
@@ -226,8 +275,11 @@ var serverStatusCmd = &cobra.Command{
 		port := viper.GetInt("port")
 		url := fmt.Sprintf("http://%s:%d/health", host, port)
 
-		tokenPath := os.ExpandEnv("$HOME/.config/atelier/token")
-		token, err := auth.LoadOrCreateToken(tokenPath)
+		tokenPath, err := auth.GetDefaultTokenPath()
+		var token string
+		if err == nil {
+			token, err = auth.LoadOrCreateToken(tokenPath)
+		}
 		if err != nil {
 			fmt.Printf("Warning: Failed to load token: %v\n", err)
 		}
@@ -264,6 +316,7 @@ var serverStatusCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serverCmd)
 	serverCmd.AddCommand(serverStatusCmd)
+	serverCmd.AddCommand(serverTokenCmd)
 	serverCmd.AddCommand(serverStartCmd)
 	serverCmd.AddCommand(serverStopCmd)
 	serverCmd.AddCommand(serverInstallCmd)

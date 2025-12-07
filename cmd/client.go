@@ -29,8 +29,30 @@ var clientCmd = &cobra.Command{
 	},
 }
 
+var clientLoginCmd = &cobra.Command{
+	Use:   "login [token]",
+	Short: "Save the authentication token",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		token := args[0]
+		tokenPath, err := auth.GetDefaultTokenPath()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting token path: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := auth.SaveToken(tokenPath, token); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving token: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Token saved successfully to %s\n", tokenPath)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(clientCmd)
+	clientCmd.AddCommand(clientLoginCmd)
 }
 
 func runClient() {
@@ -41,7 +63,11 @@ func runClient() {
 	port := viper.GetInt("port")
 
 	// 1. Load Token
-	tokenPath := os.ExpandEnv("$HOME/.config/atelier/token")
+	tokenPath, err := auth.GetDefaultTokenPath()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting token path: %v\n", err)
+		os.Exit(1)
+	}
 	token, err := auth.LoadOrCreateToken(tokenPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading token: %v\n", err)
