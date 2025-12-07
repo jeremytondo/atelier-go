@@ -23,20 +23,53 @@ func LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	var sessions []string
 	var paths []string
 
-	// We don't really need to handle errors here since the system functions swallow them gracefully
-	// returning empty lists.
+	filter := r.URL.Query().Get("filter")
+	if filter == "" {
+		filter = "frequent"
+	}
 
-	wg.Add(2)
+	// Calculate which concurrent tasks to run
+	runSessions := true
+	runPaths := false
+	pathSource := "zoxide" // "zoxide" or "fd"
 
-	go func() {
-		defer wg.Done()
-		sessions, _ = system.GetSessions()
-	}()
+	switch filter {
+	case "sessions":
+		runPaths = false
+	case "all":
+		runPaths = true
+		pathSource = "fd"
+	default: // "frequent"
+		runPaths = true
+		pathSource = "zoxide"
+	}
 
-	go func() {
-		defer wg.Done()
-		paths, _ = system.GetZoxideEntries()
-	}()
+	tasks := 0
+	if runSessions {
+		tasks++
+	}
+	if runPaths {
+		tasks++
+	}
+	wg.Add(tasks)
+
+	if runSessions {
+		go func() {
+			defer wg.Done()
+			sessions, _ = system.GetSessions()
+		}()
+	}
+
+	if runPaths {
+		go func() {
+			defer wg.Done()
+			if pathSource == "fd" {
+				paths, _ = system.GetAllEntries()
+			} else {
+				paths, _ = system.GetZoxideEntries()
+			}
+		}()
+	}
 
 	wg.Wait()
 
