@@ -39,7 +39,8 @@ jobs:
         id: version
         run: |
           # Get the latest tag, default to v0.0.0 if none exists
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1)
+          [ -z "$LATEST_TAG" ] && LATEST_TAG="v0.0.0"
           echo "Current version: $LATEST_TAG"
           
           # Remove 'v' prefix
