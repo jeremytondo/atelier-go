@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"atelier-go/internal/api"
 	"atelier-go/internal/auth"
@@ -54,6 +55,53 @@ var serverCmd = &cobra.Command{
 	},
 }
 
+var serverStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Check the status of the Atelier daemon",
+	Run: func(cmd *cobra.Command, args []string) {
+		host := viper.GetString("host")
+		if host == "" || host == "0.0.0.0" {
+			host = "127.0.0.1"
+		}
+		port := viper.GetInt("port")
+		url := fmt.Sprintf("http://%s:%d/health", host, port)
+
+		tokenPath := os.ExpandEnv("$HOME/.config/atelier/token")
+		token, err := auth.LoadOrCreateToken(tokenPath)
+		if err != nil {
+			fmt.Printf("Warning: Failed to load token: %v\n", err)
+		}
+
+		client := &http.Client{
+			Timeout: 2 * time.Second,
+		}
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			fmt.Printf("Error creating request: %v\n", err)
+			return
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Server is DOWN")
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			fmt.Println("Server is UP")
+			fmt.Printf("Address: http://%s:%d\n", host, port)
+		} else {
+			fmt.Printf("Server is UP but returned status: %d\n", resp.StatusCode)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(serverCmd)
+	serverCmd.AddCommand(serverStatusCmd)
 }
