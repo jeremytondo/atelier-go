@@ -7,9 +7,11 @@ This document describes the architecture and components (Agents) of the `atelier
 The system is built as a single Go binary (`atelier-go`) that operates in two primary modes:
 
 ### 1. The Daemon (Server)
+
 **Command:** `atelier-go server`
 
 The Daemon is the central agent running on the host machine (where your code lives).
+
 - **Responsibilities:**
   - Runs as a background service (default port: `9001`).
   - Exposes a secure HTTP API protected by Bearer tokens.
@@ -17,9 +19,11 @@ The Daemon is the central agent running on the host machine (where your code liv
   - Handles health checks and authentication.
 
 ### 2. The Client
+
 **Command:** `atelier-go client`
 
 The Client is the user-facing agent that facilitates connection and workflow management.
+
 - **Responsibilities:**
   - Connects to the Daemon via HTTP to fetch active sessions and recent locations.
   - Provides an interactive, fuzzy-searchable UI using `fzf`.
@@ -42,3 +46,7 @@ When initiating a new session in a target directory, the user can choose from th
 1. **Edit:** Launches `nvim` (Neovim) directly in the target directory.
 2. **Shell:** Launches a standard interactive shell (`bash` or configured `$SHELL`).
 3. **Opencode:** Launches the `opencode` CLI agent in the target directory.
+
+## Agent Behavior
+
+- NEVER commit anything to git.
