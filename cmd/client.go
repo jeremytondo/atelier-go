@@ -197,13 +197,21 @@ func selectAction(path string) (string, error) {
 }
 
 func connectToSession(host, sessionName string) {
-	// ssh -t <HOST> shpool attach -f <SESSION_NAME>
+	// ssh -t <HOST> printf "\033]2;%s\007" <SESSION_NAME> && shpool attach -f <SESSION_NAME>
 	// Note: If host is "localhost" or "0.0.0.0", we might want to skip SSH?
 	// But the prompt says "Construct the final SSH command". So we stick to that.
 
 	// Quote sessionName to prevent remote shell globbing
 	quotedSession := fmt.Sprintf("'%s'", sessionName)
-	sshArgs := []string{"-t", host, "shpool", "attach", "-f", quotedSession}
+
+	// We prepend the printf command to update the window title before attaching
+	// The format is: printf "\033]2;%s\007" "sessionName"
+	sshArgs := []string{
+		"-t", host,
+		"printf", "\"\\033]2;%s\\007\"", quotedSession,
+		"&&",
+		"shpool", "attach", "-f", quotedSession,
+	}
 	runSSH(sshArgs)
 }
 
@@ -223,15 +231,18 @@ func createNewSession(host, path, action string) {
 
 	// Construct session name: [path:action]
 	sessionName := fmt.Sprintf("[%s:%s]", path, action)
+	quotedSessionName := fmt.Sprintf("'%s'", sessionName)
 
-	// ssh -t <HOST> shpool attach --dir <PATH> --cmd <CMD> <SESSION_ID>
+	// ssh -t <HOST> printf "\033]2;%s\007" <SESSION_NAME> && shpool attach --dir <PATH> --cmd <CMD> <SESSION_ID>
 	// Quote arguments to prevent remote shell globbing or word splitting
 	sshArgs := []string{
 		"-t", host,
+		"printf", "\"\\033]2;%s\\007\"", quotedSessionName,
+		"&&",
 		"shpool", "attach",
 		"--dir", fmt.Sprintf("'%s'", path),
 		"--cmd", fmt.Sprintf("\"%s\"", cmd),
-		fmt.Sprintf("'%s'", sessionName),
+		quotedSessionName,
 	}
 	runSSH(sshArgs)
 }
