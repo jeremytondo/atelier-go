@@ -261,6 +261,13 @@ func selectAction(path string, actions []api.Action) (api.Action, error) {
 }
 
 func connectToSession(host, sessionName string) {
+	if isLocal(host) {
+		fmt.Printf("\033]2;%s\007", sessionName)
+		cmd := exec.Command("shpool", "attach", "-f", sessionName)
+		runInteractive(cmd)
+		return
+	}
+
 	// Quote sessionName to prevent remote shell globbing
 	quotedSession := fmt.Sprintf("'%s'", sessionName)
 
@@ -276,6 +283,29 @@ func connectToSession(host, sessionName string) {
 }
 
 func createNewSession(host, path string, action api.Action) {
+	if isLocal(host) {
+		cmdStr := action.Command
+		if cmdStr == "" {
+			cmdStr = os.Getenv("SHELL")
+			if cmdStr == "" {
+				cmdStr = "/bin/bash"
+			}
+		} else {
+			cmdStr = os.ExpandEnv(cmdStr)
+		}
+
+		sessionName := fmt.Sprintf("[%s:%s]", path, action.Name)
+		fmt.Printf("\033]2;%s\007", sessionName)
+
+		cmd := exec.Command("shpool", "attach",
+			"--dir", path,
+			"--cmd", cmdStr,
+			sessionName,
+		)
+		runInteractive(cmd)
+		return
+	}
+
 	cmd := action.Command
 	if cmd == "" {
 		cmd = "${SHELL:-/bin/bash}"
@@ -304,11 +334,29 @@ func runSSH(args []string) {
 	fmt.Printf("Connecting: ssh %s\n", strings.Join(args, " "))
 
 	cmd := exec.Command("ssh", args...)
+	runInteractive(cmd)
+}
+
+func isLocal(host string) bool {
+	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" {
+		return true
+	}
+	hostname, err := os.Hostname()
+	if err == nil && strings.EqualFold(host, hostname) {
+		return true
+	}
+	return false
+}
+
+func runInteractive(cmd *exec.Cmd) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			os.Exit(exitErr.ExitCode())
+		}
 		os.Exit(1)
 	}
 }
