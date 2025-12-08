@@ -66,6 +66,9 @@ var serverCmd = &cobra.Command{
 		// Locations Endpoint (Protected)
 		mux.Handle("/api/locations", auth.RequireToken(http.HandlerFunc(api.LocationsHandler)))
 
+		// Actions Endpoint (Protected)
+		mux.Handle("/api/actions", auth.RequireToken(http.HandlerFunc(api.ActionsHandler)))
+
 		server := &http.Server{
 			Addr:    addr,
 			Handler: mux,

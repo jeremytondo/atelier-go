@@ -126,7 +126,22 @@ func runClient(filter string) {
 	} else {
 		// Create new session at path
 		path := selection
-		action, err := selectAction(path)
+
+		// Fetch available actions from server
+		urlActions := fmt.Sprintf("http://%s:%d/api/actions", host, port)
+		actionsResp, err := fetchActions(urlActions, token)
+		var actions []api.Action
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to fetch actions: %v\n", err)
+			// Fallback to default
+			actions = []api.Action{
+				{Name: "shell", Command: "$SHELL -l"},
+			}
+		} else {
+			actions = actionsResp.Actions
+		}
+
+		action, err := selectAction(path, actions)
 		if err != nil {
 			os.Exit(0)
 		}
@@ -159,6 +174,31 @@ func fetchLocations(url, token string) (*api.LocationsResponse, error) {
 	return &locs, nil
 }
 
+func fetchActions(url, token string) (*api.ActionsResponse, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status: %d", resp.StatusCode)
+	}
+
+	var actions api.ActionsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&actions); err != nil {
+		return nil, err
+	}
+	return &actions, nil
+}
+
 func runFzf(items []string, prompt string) (string, error) {
 	cmd := exec.Command("fzf", "--height=40%", "--layout=reverse", "--border", "--prompt="+prompt)
 	cmd.Stderr = os.Stderr
@@ -183,38 +223,44 @@ func runFzf(items []string, prompt string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func selectAction(path string) (string, error) {
-	actions := []string{"edit", "shell", "opencode"}
+func selectAction(path string, actions []api.Action) (api.Action, error) {
+	var names []string
+	for _, a := range actions {
+		names = append(names, a.Name)
+	}
+
 	header := fmt.Sprintf("Select Action for %s", filepath.Base(path))
 
-	// Basic fzf call for actions
 	cmd := exec.Command("fzf", "--height=20%", "--layout=reverse", "--border", "--header="+header, "--prompt=Action ➜ ")
 	cmd.Stderr = os.Stderr
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return "", err
+		return api.Action{}, err
 	}
 
 	go func() {
 		defer stdin.Close()
-		for _, a := range actions {
-			io.WriteString(stdin, a+"\n")
+		for _, n := range names {
+			io.WriteString(stdin, n+"\n")
 		}
 	}()
 
 	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return api.Action{}, err
 	}
-	return strings.TrimSpace(string(output)), nil
+	selectedName := strings.TrimSpace(string(output))
+
+	for _, a := range actions {
+		if a.Name == selectedName {
+			return a, nil
+		}
+	}
+	return api.Action{}, fmt.Errorf("action not found")
 }
 
 func connectToSession(host, sessionName string) {
-	// ssh -t <HOST> printf "\033]2;%s\007" <SESSION_NAME> && shpool attach -f <SESSION_NAME>
-	// Note: If host is "localhost" or "0.0.0.0", we might want to skip SSH?
-	// But the prompt says "Construct the final SSH command". So we stick to that.
-
 	// Quote sessionName to prevent remote shell globbing
 	quotedSession := fmt.Sprintf("'%s'", sessionName)
 
@@ -229,22 +275,14 @@ func connectToSession(host, sessionName string) {
 	runSSH(sshArgs)
 }
 
-func createNewSession(host, path, action string) {
-	// Map action to command
-	var cmd string
-	switch action {
-	case "edit":
-		cmd = "nvim ." // simplified, assuming nvim exists on remote as per previous scripts
-	case "shell":
-		cmd = "${SHELL:-/bin/bash} -l"
-	case "opencode":
-		cmd = "opencode"
-	default:
+func createNewSession(host, path string, action api.Action) {
+	cmd := action.Command
+	if cmd == "" {
 		cmd = "${SHELL:-/bin/bash}"
 	}
 
 	// Construct session name: [path:action]
-	sessionName := fmt.Sprintf("[%s:%s]", path, action)
+	sessionName := fmt.Sprintf("[%s:%s]", path, action.Name)
 	quotedSessionName := fmt.Sprintf("'%s'", sessionName)
 
 	// ssh -t <HOST> printf "\033]2;%s\007" <SESSION_NAME> && shpool attach --dir <PATH> --cmd <CMD> <SESSION_ID>
@@ -271,11 +309,6 @@ func runSSH(args []string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		// If ssh fails, it usually prints to stderr.
-		// We might want to handle exit codes, but for now just exit.
-		// Note: ssh -t returning after session ends might return non-zero if the inner command did?
-		// Or if connection closed.
-		// Generally we can just exit.
 		os.Exit(1)
 	}
 }
