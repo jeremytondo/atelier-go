@@ -24,6 +24,9 @@ const (
 var clientCmd = &cobra.Command{
 	Use:   "client",
 	Short: "Connect to the Atelier daemon",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		loadConfig("client")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		all, _ := cmd.Flags().GetBool("all")
 		sessions, _ := cmd.Flags().GetBool("sessions")

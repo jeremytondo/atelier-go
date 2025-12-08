@@ -34,6 +34,9 @@ func printStartupBanner(addr, token string) {
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start the Atelier daemon",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		loadConfig("server")
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		host := viper.GetString("host")
 		if host == "" {

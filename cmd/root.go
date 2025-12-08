@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,4 +39,33 @@ func initConfig() {
 
 	// Check for env vars (e.g. ATELIER_HOST, ATELIER_PORT)
 	viper.AutomaticEnv()
+}
+
+func loadConfig(configName string) {
+	// 1. Determine the config directory
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			// If we can't find home, we can't load config.
+			// Just return and rely on defaults/flags.
+			return
+		}
+		configDir = filepath.Join(home, ".config")
+	}
+
+	atelierConfigDir := filepath.Join(configDir, "atelier-go")
+
+	// 2. Setup Viper
+	viper.AddConfigPath(atelierConfigDir)
+	viper.SetConfigName(configName)
+	viper.SetConfigType("toml")
+
+	// 3. Read Config
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Config file was found but had an error (e.g. invalid syntax)
+			fmt.Fprintf(os.Stderr, "Warning: failed to read config file: %v\n", err)
+		}
+	}
 }
