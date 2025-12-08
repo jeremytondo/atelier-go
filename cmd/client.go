@@ -12,6 +12,7 @@ import (
 
 	"atelier-go/internal/api"
 	"atelier-go/internal/auth"
+	"atelier-go/internal/system"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -19,13 +20,14 @@ import (
 
 const (
 	iconSession = " "
+	iconProject = "\ueb30 "
 )
 
 var clientCmd = &cobra.Command{
 	Use:   "client",
 	Short: "Connect to the Atelier daemon",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		loadConfig("client")
+		system.LoadConfig("client")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		all, _ := cmd.Flags().GetBool("all")
@@ -99,9 +101,26 @@ func runClient(filter string) {
 
 	// 3. Prepare List for FZF
 	var options []string
+	// Map to store project name -> location for lookup
+	projectPaths := make(map[string]string)
+
 	// Add Sessions first with icon
 	for _, s := range locations.Sessions {
 		options = append(options, iconSession+" "+s)
+	}
+	// Add Projects
+	for _, p := range locations.Projects {
+		// Use project name for display
+		dispName := p.Name
+		if dispName == "" {
+			dispName = filepath.Base(p.Location)
+		}
+
+		// If duplicate names exist, we might overwrite, but that's a user config issue mostly.
+		// To be safe we could append path if collision, but keeping it simple as requested.
+		projectPaths[dispName] = p.Location
+
+		options = append(options, iconProject+dispName)
 	}
 	// Add Paths
 	options = append(options, locations.Paths...)
@@ -119,17 +138,26 @@ func runClient(filter string) {
 	}
 
 	// 5. Handle Selection
-	if strings.HasPrefix(selection, iconSession) {
+	if sessionName, ok := strings.CutPrefix(selection, iconSession); ok {
 		// Attach to existing session
-		sessionName := strings.TrimSpace(strings.TrimPrefix(selection, iconSession))
-		connectToSession(host, sessionName)
+		connectToSession(host, strings.TrimSpace(sessionName))
 	} else {
 		// Create new session at path
 		path := selection
+		if projName, ok := strings.CutPrefix(selection, iconProject); ok {
+			// Resolve project name to path
+			name := strings.TrimSpace(projName)
+			if loc, found := projectPaths[name]; found {
+				path = loc
+			} else {
+				// Fallback if something weird happens
+				path = name
+			}
+		}
 
 		// Fetch available actions from server
 		urlActions := fmt.Sprintf("http://%s:%d/api/actions", host, port)
-		actionsResp, err := fetchActions(urlActions, token)
+		actionsResp, err := fetchActions(urlActions, token, path)
 		var actions []api.Action
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to fetch actions: %v\n", err)
@@ -145,7 +173,16 @@ func runClient(filter string) {
 		if err != nil {
 			os.Exit(0)
 		}
-		createNewSession(host, path, action)
+
+		// Determine the name to use (project name or fallback to path base)
+		name := filepath.Base(path)
+		if strings.HasPrefix(selection, iconProject) {
+			if projName, ok := strings.CutPrefix(selection, iconProject); ok {
+				name = strings.TrimSpace(projName)
+			}
+		}
+
+		createNewSession(host, path, name, action, actionsResp != nil && actionsResp.IsProject)
 	}
 }
 
@@ -174,11 +211,16 @@ func fetchLocations(url, token string) (*api.LocationsResponse, error) {
 	return &locs, nil
 }
 
-func fetchActions(url, token string) (*api.ActionsResponse, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func fetchActions(urlBase, token, path string) (*api.ActionsResponse, error) {
+	req, err := http.NewRequest("GET", urlBase, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	q := req.URL.Query()
+	q.Add("path", path)
+	req.URL.RawQuery = q.Encode()
+
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{}
@@ -282,51 +324,78 @@ func connectToSession(host, sessionName string) {
 	runSSH(sshArgs)
 }
 
-func createNewSession(host, path string, action api.Action) {
-	if isLocal(host) {
-		cmdStr := action.Command
-		if cmdStr == "" {
-			cmdStr = os.Getenv("SHELL")
-			if cmdStr == "" {
-				cmdStr = "/bin/bash"
-			}
-		} else {
-			cmdStr = os.ExpandEnv(cmdStr)
-		}
+func createNewSession(host, path, name string, action api.Action, isProject bool) {
+	// Sanitize session name: lowercase, spaces -> dashes
+	// Window Title: Project Name - Action Name (original case)
 
-		sessionName := fmt.Sprintf("[%s:%s]", path, action.Name)
-		fmt.Printf("\033]2;%s\007", sessionName)
+	var sessionID string
+	var windowTitle string
+
+	if isProject {
+		// Session ID: [project-name:action-name] (sanitized)
+		safeName := strings.ReplaceAll(strings.ToLower(name), " ", "-")
+		safeActionName := strings.ReplaceAll(strings.ToLower(action.Name), " ", "-")
+		sessionID = fmt.Sprintf("[%s:%s]", safeName, safeActionName)
+
+		// Window Title: Project Name - Action Name
+		windowTitle = fmt.Sprintf("%s - %s", name, action.Name)
+	} else {
+		// Standard behavior
+		// Session ID: [path:action]
+		safePath := strings.ReplaceAll(path, " ", "-")
+		safeAction := strings.ReplaceAll(action.Name, " ", "-")
+		sessionID = fmt.Sprintf("[%s:%s]", safePath, safeAction)
+
+		windowTitle = sessionID
+	}
+
+	cmdStr := action.Command
+	if cmdStr == "" {
+		cmdStr = "${SHELL:-/bin/bash}"
+	} else if isLocal(host) {
+		cmdStr = os.ExpandEnv(cmdStr)
+	} else {
+		// Remote: ensure shell default if empty
+		if cmdStr == "" {
+			cmdStr = "${SHELL:-/bin/bash}"
+		}
+	}
+
+	if isLocal(host) {
+		if windowTitle != "" {
+			fmt.Printf("\033]2;%s\007", windowTitle)
+		}
 
 		cmd := exec.Command("shpool", "attach",
 			"--dir", path,
 			"--cmd", cmdStr,
-			sessionName,
+			sessionID,
 		)
 		runInteractive(cmd)
 		return
 	}
 
-	cmd := action.Command
-	if cmd == "" {
-		cmd = "${SHELL:-/bin/bash}"
-	}
+	quotedSessionID := fmt.Sprintf("'%s'", sessionID)
 
-	// Construct session name: [path:action]
-	sessionName := fmt.Sprintf("[%s:%s]", path, action.Name)
-	quotedSessionName := fmt.Sprintf("'%s'", sessionName)
-
-	// ssh -t <HOST> printf "\033]2;%s\007" <SESSION_NAME> && shpool attach --dir <PATH> --cmd <CMD> <SESSION_ID>
-	// Quote arguments to prevent remote shell globbing or word splitting
+	// Remote
+	// ssh -t <HOST> printf "\033]2;%s\007" <TITLE> && shpool attach ... <SESSION_ID>
 	sshArgs := []string{
 		"-t", host,
-		"printf", "\"\\033]2;%s\\007\"", quotedSessionName,
-		"&&",
-		"shpool", "attach",
-
-		"--dir", fmt.Sprintf("'%s'", path),
-		"--cmd", fmt.Sprintf("\"%s\"", cmd),
-		quotedSessionName,
 	}
+
+	if windowTitle != "" {
+		// printf "\033]2;%s\007" "Title"
+		// We need to be careful with quoting for the remote shell.
+		sshArgs = append(sshArgs, "printf", fmt.Sprintf("\"\\033]2;%s\\007\"", windowTitle), "&&")
+	}
+
+	sshArgs = append(sshArgs,
+		"shpool", "attach",
+		"--dir", fmt.Sprintf("'%s'", path),
+		"--cmd", fmt.Sprintf("\"%s\"", cmdStr),
+		quotedSessionID,
+	)
+
 	runSSH(sshArgs)
 }
 
