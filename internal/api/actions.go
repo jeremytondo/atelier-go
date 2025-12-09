@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"atelier-go/internal/system"
+
 	"github.com/spf13/viper"
 )
 
@@ -13,7 +15,8 @@ type Action struct {
 }
 
 type ActionsResponse struct {
-	Actions []Action `json:"actions"`
+	Actions   []Action `json:"actions"`
+	IsProject bool     `json:"is_project"`
 }
 
 func ActionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,8 +47,24 @@ func ActionsHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Check for project context
+	path := r.URL.Query().Get("path")
+	isProject := false
+	if path != "" {
+		if proj := system.GetProjectByPath(path); proj != nil {
+			isProject = true
+			for _, pa := range proj.Actions {
+				actions = append(actions, Action{
+					Name:    pa.Name,
+					Command: pa.Command,
+				})
+			}
+		}
+	}
+
 	response := ActionsResponse{
-		Actions: actions,
+		Actions:   actions,
+		IsProject: isProject,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

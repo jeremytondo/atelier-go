@@ -9,8 +9,9 @@ import (
 )
 
 type LocationsResponse struct {
-	Sessions []string `json:"sessions"`
-	Paths    []string `json:"paths"`
+	Sessions []string         `json:"sessions"`
+	Projects []system.Project `json:"projects"`
+	Paths    []string         `json:"paths"`
 }
 
 func LocationsHandler(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +22,7 @@ func LocationsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var wg sync.WaitGroup
 	var sessions []string
+	var projects []system.Project
 	var paths []string
 
 	filter := r.URL.Query().Get("filter")
@@ -31,16 +33,22 @@ func LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	// Calculate which concurrent tasks to run
 	runSessions := true
 	runPaths := false
+	runProjects := false
 	pathSource := "zoxide" // "zoxide" or "fd"
 
 	switch filter {
 	case "sessions":
 		runPaths = false
+	case "projects":
+		runPaths = false
+		runProjects = true
 	case "all":
 		runPaths = true
+		runProjects = true
 		pathSource = "fd"
 	default: // "frequent"
 		runPaths = true
+		runProjects = true
 		pathSource = "zoxide"
 	}
 
@@ -51,12 +59,22 @@ func LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	if runPaths {
 		tasks++
 	}
+	if runProjects {
+		tasks++
+	}
 	wg.Add(tasks)
 
 	if runSessions {
 		go func() {
 			defer wg.Done()
 			sessions, _ = system.GetSessions()
+		}()
+	}
+
+	if runProjects {
+		go func() {
+			defer wg.Done()
+			projects, _ = system.LoadProjects()
 		}()
 	}
 
@@ -77,12 +95,16 @@ func LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	if sessions == nil {
 		sessions = []string{}
 	}
+	if projects == nil {
+		projects = []system.Project{}
+	}
 	if paths == nil {
 		paths = []string{}
 	}
 
 	response := LocationsResponse{
 		Sessions: sessions,
+		Projects: projects,
 		Paths:    paths,
 	}
 
