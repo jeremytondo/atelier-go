@@ -19,6 +19,7 @@ type Client struct {
 	Token string
 }
 
+// New creates a new Client instance.
 func New(host string, port int, token string) *Client {
 	return &Client{
 		Host:  host,
@@ -27,6 +28,7 @@ func New(host string, port int, token string) *Client {
 	}
 }
 
+// FetchLocations retrieves the list of locations (sessions, projects, paths) from the server.
 func (c *Client) FetchLocations(filter string) (*api.LocationsResponse, error) {
 	url := fmt.Sprintf("http://%s:%d/api/locations?filter=%s", c.Host, c.Port, filter)
 	req, err := http.NewRequest("GET", url, nil)
@@ -53,6 +55,7 @@ func (c *Client) FetchLocations(filter string) (*api.LocationsResponse, error) {
 	return &locs, nil
 }
 
+// FetchActions retrieves the list of available actions for a given path.
 func (c *Client) FetchActions(path string) (*api.ActionsResponse, error) {
 	urlBase := fmt.Sprintf("http://%s:%d/api/actions", c.Host, c.Port)
 	req, err := http.NewRequest("GET", urlBase, nil)
@@ -84,6 +87,7 @@ func (c *Client) FetchActions(path string) (*api.ActionsResponse, error) {
 	return &actions, nil
 }
 
+// Attach connects to an existing session.
 func (c *Client) Attach(sessionName string) error {
 	bin, args := shell.BuildAttachArgs(c.Host, sessionName)
 
@@ -98,6 +102,7 @@ func (c *Client) Attach(sessionName string) error {
 	return runInteractive(cmd)
 }
 
+// Start creates and attaches to a new session.
 func (c *Client) Start(path, name string, action api.Action, isProject bool) error {
 	// Prepare session info (ID and Title)
 	info := shell.PrepareSessionInfo(path, name, action.Name, isProject)
@@ -130,10 +135,6 @@ func runInteractive(cmd *exec.Cmd) error {
 
 	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			// We return the exit error to let the caller handle exit codes if needed,
-			// or just bubble up the error.
-			// However, standard os.Exit behavior was in the original code.
-			// Here we return error and let the CLI wrapper decide to exit.
 			return exitErr
 		}
 		return err

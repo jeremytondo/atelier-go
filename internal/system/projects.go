@@ -1,9 +1,7 @@
 package system
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -46,16 +44,15 @@ func LoadProjects() ([]Project, error) {
 		}
 
 		if p.Location != "" {
-			// Expand ~ to home directory
-			if strings.HasPrefix(p.Location, "~/") {
-				home, err := os.UserHomeDir()
-				if err == nil {
-					p.Location = filepath.Join(home, p.Location[2:])
-				}
+			// Expand path (includes ~ and env vars)
+			expanded, err := ExpandPath(p.Location)
+			if err != nil {
+				// If expansion fails, we can either skip or keep original.
+				// For resilience, let's keep original but maybe log if we had a logger here.
+				// Since we don't, we just proceed.
+			} else {
+				p.Location = expanded
 			}
-
-			// Expand environment variables in the location path
-			p.Location = os.ExpandEnv(p.Location)
 			projects = append(projects, p)
 		}
 	}

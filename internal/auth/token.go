@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"atelier-go/internal/system"
 )
 
 // Authenticator handles token-based authentication.
@@ -43,12 +45,10 @@ func LoadOrCreateToken(path string) (string, error) {
 	}
 
 	// Expand ~ if present (simple handling for now, assuming HOME env var is set)
-	if strings.HasPrefix(path, "~") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get user home dir: %w", err)
-		}
-		path = filepath.Join(home, path[1:])
+	var err error
+	path, err = system.ExpandPath(path)
+	if err != nil {
+		return "", err
 	}
 
 	// Ensure directory exists
@@ -86,12 +86,10 @@ func LoadOrCreateToken(path string) (string, error) {
 // SaveToken writes the given token to the specified path, creating directories if needed.
 func SaveToken(path, token string) error {
 	// Expand ~ if present
-	if strings.HasPrefix(path, "~") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get user home dir: %w", err)
-		}
-		path = filepath.Join(home, path[1:])
+	var err error
+	path, err = system.ExpandPath(path)
+	if err != nil {
+		return err
 	}
 
 	// Ensure directory exists

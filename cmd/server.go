@@ -112,9 +112,7 @@ var serverCmd = &cobra.Command{
 			logger.Error("Server forced to shutdown", "error", err)
 		}
 
-		// Cleanup PID file if it exists (though strictly speaking, the start command manages the PID file,
-		// but if we are running in foreground or if start command exec'd us, we might want to ensure cleanup)
-		// The `start` command writes the PID file.
+		// Cleanup PID file
 		if err := system.RemovePIDFile(); err != nil {
 			// It's okay if it doesn't exist
 			if !os.IsNotExist(err) {
@@ -150,15 +148,8 @@ var serverStartCmd = &cobra.Command{
 
 		// Start the process detached
 		startCmd := exec.Command(exe, "server")
-		// Detach logic usually involves redirecting std I/O and handling process groups,
-		// but simply starting it via exec without waiting and letting it write its PID is often enough for simple use cases.
-		// However, to truly background it and have it survive the parent shell exit, we might want to setsid.
-		// For simplicity in this Go implementation, we'll start it and just not Wait().
-		// Since the parent (this CLI command) exits immediately, the child effectively becomes a daemon.
 
-		// Redirect output to log file? Or just /dev/null for now?
-		// A proper background service should probably log somewhere.
-		// For now, let's inherit environment but detach I/O so it doesn't hang the terminal.
+		// Detach I/O to prevent hanging the terminal
 		startCmd.Stdout = nil
 		startCmd.Stderr = nil
 		startCmd.Stdin = nil
