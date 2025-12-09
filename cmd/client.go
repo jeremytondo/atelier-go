@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +10,7 @@ import (
 
 	"atelier-go/internal/api"
 	"atelier-go/internal/auth"
-	"atelier-go/internal/shell"
+	"atelier-go/internal/client"
 	"atelier-go/internal/system"
 
 	"github.com/spf13/cobra"
@@ -91,10 +89,13 @@ func runClient(filter string) {
 		os.Exit(1)
 	}
 
+	// Initialize Client
+	c := client.New(host, port, token)
+
 	// 2. Fetch Locations
-	url := fmt.Sprintf("http://%s:%d/api/locations?filter=%s", host, port, filter)
-	locations, err := fetchLocations(url, token)
+	locations, err := c.FetchLocations(filter)
 	if err != nil {
+		url := fmt.Sprintf("http://%s:%d", host, port)
 		fmt.Fprintf(os.Stderr, "Error connecting to Atelier Daemon at %s: %v\n", url, err)
 		fmt.Fprintf(os.Stderr, "Is the server running? (atelier-go server)\n")
 		os.Exit(1)
@@ -141,7 +142,10 @@ func runClient(filter string) {
 	// 5. Handle Selection
 	if sessionName, ok := strings.CutPrefix(selection, iconSession); ok {
 		// Attach to existing session
-		connectToSession(host, strings.TrimSpace(sessionName))
+		if err := c.Attach(strings.TrimSpace(sessionName)); err != nil {
+			fmt.Fprintf(os.Stderr, "Error attaching to session: %v\n", err)
+			os.Exit(1)
+		}
 	} else {
 		// Create new session at path
 		path := selection
@@ -157,8 +161,7 @@ func runClient(filter string) {
 		}
 
 		// Fetch available actions from server
-		urlActions := fmt.Sprintf("http://%s:%d/api/actions", host, port)
-		actionsResp, err := fetchActions(urlActions, token, path)
+		actionsResp, err := c.FetchActions(path)
 		var actions []api.Action
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to fetch actions: %v\n", err)
@@ -183,63 +186,11 @@ func runClient(filter string) {
 			}
 		}
 
-		createNewSession(host, path, name, action, actionsResp != nil && actionsResp.IsProject)
+		if err := c.Start(path, name, action, actionsResp != nil && actionsResp.IsProject); err != nil {
+			fmt.Fprintf(os.Stderr, "Error starting session: %v\n", err)
+			os.Exit(1)
+		}
 	}
-}
-
-func fetchLocations(url, token string) (*api.LocationsResponse, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status: %d", resp.StatusCode)
-	}
-
-	var locs api.LocationsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&locs); err != nil {
-		return nil, err
-	}
-	return &locs, nil
-}
-
-func fetchActions(urlBase, token, path string) (*api.ActionsResponse, error) {
-	req, err := http.NewRequest("GET", urlBase, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	q := req.URL.Query()
-	q.Add("path", path)
-	req.URL.RawQuery = q.Encode()
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status: %d", resp.StatusCode)
-	}
-
-	var actions api.ActionsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&actions); err != nil {
-		return nil, err
-	}
-	return &actions, nil
 }
 
 func runFzf(items []string, prompt string) (string, error) {
@@ -301,59 +252,4 @@ func selectAction(path string, actions []api.Action) (api.Action, error) {
 		}
 	}
 	return api.Action{}, fmt.Errorf("action not found")
-}
-
-func connectToSession(host, sessionName string) {
-	bin, args := shell.BuildAttachArgs(host, sessionName)
-
-	if system.IsLocal(host) {
-		fmt.Printf("\033]2;%s\007", sessionName)
-	}
-
-	if bin == "ssh" {
-		runSSH(args)
-	} else {
-		cmd := exec.Command(bin, args...)
-		runInteractive(cmd)
-	}
-}
-
-func createNewSession(host, path, name string, action api.Action, isProject bool) {
-	// Prepare session info (ID and Title)
-	info := shell.PrepareSessionInfo(path, name, action.Name, isProject)
-
-	// Build the command arguments
-	bin, args := shell.BuildStartArgs(host, path, info, action.Command)
-
-	// Update local title if running locally
-	if system.IsLocal(host) && info.Title != "" {
-		fmt.Printf("\033]2;%s\007", info.Title)
-	}
-
-	if bin == "ssh" {
-		runSSH(args)
-	} else {
-		cmd := exec.Command(bin, args...)
-		runInteractive(cmd)
-	}
-}
-
-func runSSH(args []string) {
-	fmt.Printf("Connecting: ssh %s\n", strings.Join(args, " "))
-
-	cmd := exec.Command("ssh", args...)
-	runInteractive(cmd)
-}
-
-func runInteractive(cmd *exec.Cmd) {
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		os.Exit(1)
-	}
 }
