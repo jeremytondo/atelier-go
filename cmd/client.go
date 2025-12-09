@@ -265,6 +265,10 @@ func runFzf(items []string, prompt string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+func escapeSingleQuotes(str string) string {
+	return strings.ReplaceAll(str, "'", "'\\''")
+}
+
 func selectAction(path string, actions []api.Action) (api.Action, error) {
 	var names []string
 	for _, a := range actions {
@@ -349,16 +353,34 @@ func createNewSession(host, path, name string, action api.Action, isProject bool
 		windowTitle = sessionID
 	}
 
-	cmdStr := action.Command
-	if cmdStr == "" {
-		cmdStr = "${SHELL:-/bin/bash}"
-	} else if isLocal(host) {
-		cmdStr = os.ExpandEnv(cmdStr)
-	} else {
-		// Remote: ensure shell default if empty
-		if cmdStr == "" {
-			cmdStr = "${SHELL:-/bin/bash}"
+	// Prepare the command to run
+	// We want to run inside a login shell to ensure PATH and environment are set correctly.
+	// Behavior: $SHELL -l -c 'command'
+
+	rawCmd := action.Command
+	var finalCmd string
+
+	// Determine shell to use
+	shell := "$SHELL"
+	if isLocal(host) {
+		shell = os.Getenv("SHELL")
+		if shell == "" {
+			shell = "/bin/bash"
 		}
+	} else {
+		// For remote, we rely on the remote side expanding $SHELL.
+		// However, we default to /bin/bash if for some reason $SHELL isn't set there?
+		// Actually, shpool/ssh will interpret the string.
+		shell = "${SHELL:-/bin/bash}"
+	}
+
+	if rawCmd == "" {
+		// Just start the shell
+		finalCmd = fmt.Sprintf("%s -l -i", shell)
+	} else {
+		// Wrap command
+		escapedCmd := escapeSingleQuotes(rawCmd)
+		finalCmd = fmt.Sprintf("%s -l -i -c '%s'", shell, escapedCmd)
 	}
 
 	if isLocal(host) {
@@ -368,7 +390,7 @@ func createNewSession(host, path, name string, action api.Action, isProject bool
 
 		cmd := exec.Command("shpool", "attach",
 			"--dir", path,
-			"--cmd", cmdStr,
+			"--cmd", finalCmd,
 			sessionID,
 		)
 		runInteractive(cmd)
@@ -392,7 +414,7 @@ func createNewSession(host, path, name string, action api.Action, isProject bool
 	sshArgs = append(sshArgs,
 		"shpool", "attach",
 		"--dir", fmt.Sprintf("'%s'", path),
-		"--cmd", fmt.Sprintf("\"%s\"", cmdStr),
+		"--cmd", fmt.Sprintf("\"%s\"", strings.ReplaceAll(finalCmd, "\"", "\\\"")),
 		quotedSessionID,
 	)
 
