@@ -12,6 +12,7 @@ import (
 
 	"atelier-go/internal/api"
 	"atelier-go/internal/auth"
+	"atelier-go/internal/shell"
 	"atelier-go/internal/system"
 
 	"github.com/spf13/cobra"
@@ -265,10 +266,6 @@ func runFzf(items []string, prompt string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func escapeSingleQuotes(str string) string {
-	return strings.ReplaceAll(str, "'", "'\\''")
-}
-
 func selectAction(path string, actions []api.Action) (api.Action, error) {
 	var names []string
 	for _, a := range actions {
@@ -307,118 +304,38 @@ func selectAction(path string, actions []api.Action) (api.Action, error) {
 }
 
 func connectToSession(host, sessionName string) {
-	if isLocal(host) {
+	bin, args := shell.BuildAttachArgs(host, sessionName)
+
+	if shell.IsLocal(host) {
 		fmt.Printf("\033]2;%s\007", sessionName)
-		cmd := exec.Command("shpool", "attach", "-f", sessionName)
+	}
+
+	if bin == "ssh" {
+		runSSH(args)
+	} else {
+		cmd := exec.Command(bin, args...)
 		runInteractive(cmd)
-		return
 	}
-
-	// Quote sessionName to prevent remote shell globbing
-	quotedSession := fmt.Sprintf("'%s'", sessionName)
-
-	// We prepend the printf command to update the window title before attaching
-	// The format is: printf "\033]2;%s\007" "sessionName"
-	sshArgs := []string{
-		"-t", host,
-		"printf", "\"\\033]2;%s\\007\"", quotedSession,
-		"&&",
-		"shpool", "attach", "-f", quotedSession,
-	}
-	runSSH(sshArgs)
 }
 
 func createNewSession(host, path, name string, action api.Action, isProject bool) {
-	// Sanitize session name: lowercase, spaces -> dashes
-	// Window Title: Project Name - Action Name (original case)
+	// Prepare session info (ID and Title)
+	info := shell.PrepareSessionInfo(path, name, action.Name, isProject)
 
-	var sessionID string
-	var windowTitle string
+	// Build the command arguments
+	bin, args := shell.BuildStartArgs(host, path, info, action.Command)
 
-	if isProject {
-		// Session ID: [project-name:action-name] (sanitized)
-		safeName := strings.ReplaceAll(strings.ToLower(name), " ", "-")
-		safeActionName := strings.ReplaceAll(strings.ToLower(action.Name), " ", "-")
-		sessionID = fmt.Sprintf("[%s:%s]", safeName, safeActionName)
-
-		// Window Title: Project Name - Action Name
-		windowTitle = fmt.Sprintf("%s - %s", name, action.Name)
-	} else {
-		// Standard behavior
-		// Session ID: [path:action]
-		safePath := strings.ReplaceAll(path, " ", "-")
-		safeAction := strings.ReplaceAll(action.Name, " ", "-")
-		sessionID = fmt.Sprintf("[%s:%s]", safePath, safeAction)
-
-		windowTitle = sessionID
+	// Update local title if running locally
+	if shell.IsLocal(host) && info.Title != "" {
+		fmt.Printf("\033]2;%s\007", info.Title)
 	}
 
-	// Prepare the command to run
-	// We want to run inside a login shell to ensure PATH and environment are set correctly.
-	// Behavior: $SHELL -l -c 'command'
-
-	rawCmd := action.Command
-	var finalCmd string
-
-	// Determine shell to use
-	shell := "$SHELL"
-	if isLocal(host) {
-		shell = os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/bash"
-		}
+	if bin == "ssh" {
+		runSSH(args)
 	} else {
-		// For remote, we rely on the remote side expanding $SHELL.
-		// However, we default to /bin/bash if for some reason $SHELL isn't set there?
-		// Actually, shpool/ssh will interpret the string.
-		shell = "${SHELL:-/bin/bash}"
-	}
-
-	if rawCmd == "" {
-		// Just start the shell
-		finalCmd = fmt.Sprintf("%s -l -i", shell)
-	} else {
-		// Wrap command
-		escapedCmd := escapeSingleQuotes(rawCmd)
-		finalCmd = fmt.Sprintf("%s -l -i -c '%s'", shell, escapedCmd)
-	}
-
-	if isLocal(host) {
-		if windowTitle != "" {
-			fmt.Printf("\033]2;%s\007", windowTitle)
-		}
-
-		cmd := exec.Command("shpool", "attach",
-			"--dir", path,
-			"--cmd", finalCmd,
-			sessionID,
-		)
+		cmd := exec.Command(bin, args...)
 		runInteractive(cmd)
-		return
 	}
-
-	quotedSessionID := fmt.Sprintf("'%s'", sessionID)
-
-	// Remote
-	// ssh -t <HOST> printf "\033]2;%s\007" <TITLE> && shpool attach ... <SESSION_ID>
-	sshArgs := []string{
-		"-t", host,
-	}
-
-	if windowTitle != "" {
-		// printf "\033]2;%s\007" "Title"
-		// We need to be careful with quoting for the remote shell.
-		sshArgs = append(sshArgs, "printf", fmt.Sprintf("\"\\033]2;%s\\007\"", windowTitle), "&&")
-	}
-
-	sshArgs = append(sshArgs,
-		"shpool", "attach",
-		"--dir", fmt.Sprintf("'%s'", path),
-		"--cmd", fmt.Sprintf("\"%s\"", strings.ReplaceAll(finalCmd, "\"", "\\\"")),
-		quotedSessionID,
-	)
-
-	runSSH(sshArgs)
 }
 
 func runSSH(args []string) {
@@ -426,17 +343,6 @@ func runSSH(args []string) {
 
 	cmd := exec.Command("ssh", args...)
 	runInteractive(cmd)
-}
-
-func isLocal(host string) bool {
-	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" {
-		return true
-	}
-	hostname, err := os.Hostname()
-	if err == nil && strings.EqualFold(host, hostname) {
-		return true
-	}
-	return false
 }
 
 func runInteractive(cmd *exec.Cmd) {
