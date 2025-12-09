@@ -70,14 +70,13 @@ func BuildStartArgs(host, path string, info SessionInfo, actionCmd string) (stri
 	}
 
 	// 2. Build the inner shell command
-	// e.g. $SHELL -l -i -c 'command'
-	var finalCmd string
+	// e.g. $SHELL -c 'command'
+	// We no longer force -l -i; we rely on the action command to define its environment.
+	// However, we still wrap it in a shell -c to handle parsing/arguments correctly.
 	if actionCmd == "" {
-		finalCmd = fmt.Sprintf("%s -l -i", shell)
-	} else {
-		// Quote the action command for the -c flag
-		finalCmd = fmt.Sprintf("%s -l -i -c %s", shell, Quote(actionCmd))
+		actionCmd = shell
 	}
+	finalCmd := fmt.Sprintf("%s -c %s", shell, Quote(actionCmd))
 
 	// 3. Build the shpool command
 	if system.IsLocal(host) {
