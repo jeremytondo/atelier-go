@@ -4,19 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-)
 
-// IsLocal checks if the provided host resolves to the local machine.
-func IsLocal(host string) bool {
-	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || host == "" {
-		return true
-	}
-	hostname, err := os.Hostname()
-	if err == nil && strings.EqualFold(host, hostname) {
-		return true
-	}
-	return false
-}
+	"atelier-go/internal/system"
+)
 
 // SessionInfo holds the calculated session ID and window title.
 type SessionInfo struct {
@@ -49,7 +39,7 @@ func PrepareSessionInfo(path, name, actionName string, isProject bool) SessionIn
 func BuildAttachArgs(host, sessionName string) (string, []string) {
 	quotedSession := Quote(sessionName)
 
-	if IsLocal(host) {
+	if system.IsLocal(host) {
 		return "shpool", []string{"attach", "-f", sessionName}
 	}
 
@@ -69,7 +59,7 @@ func BuildAttachArgs(host, sessionName string) (string, []string) {
 func BuildStartArgs(host, path string, info SessionInfo, actionCmd string) (string, []string) {
 	// 1. Determine Shell
 	shell := "$SHELL"
-	if IsLocal(host) {
+	if system.IsLocal(host) {
 		shell = os.Getenv("SHELL")
 		if shell == "" {
 			shell = "/bin/bash"
@@ -90,7 +80,7 @@ func BuildStartArgs(host, path string, info SessionInfo, actionCmd string) (stri
 	}
 
 	// 3. Build the shpool command
-	if IsLocal(host) {
+	if system.IsLocal(host) {
 		return "shpool", []string{
 			"attach",
 			"--dir", path,

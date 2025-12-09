@@ -306,7 +306,7 @@ func selectAction(path string, actions []api.Action) (api.Action, error) {
 func connectToSession(host, sessionName string) {
 	bin, args := shell.BuildAttachArgs(host, sessionName)
 
-	if shell.IsLocal(host) {
+	if system.IsLocal(host) {
 		fmt.Printf("\033]2;%s\007", sessionName)
 	}
 
@@ -326,7 +326,7 @@ func createNewSession(host, path, name string, action api.Action, isProject bool
 	bin, args := shell.BuildStartArgs(host, path, info, action.Command)
 
 	// Update local title if running locally
-	if shell.IsLocal(host) && info.Title != "" {
+	if system.IsLocal(host) && info.Title != "" {
 		fmt.Printf("\033]2;%s\007", info.Title)
 	}
 

@@ -54,24 +54,29 @@ var serverCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Failed to initialize token: %v", err)
 		}
+		authenticator := auth.NewAuthenticator(token)
 
 		printStartupBanner(addr, token)
 
+		// Load Configuration
+		var actions []api.Action
+		if err := viper.UnmarshalKey("actions", &actions); err != nil {
+			// If unmarshal fails, we start with an empty list
+			actions = []api.Action{}
+		}
+
+		// Create Server
+		serverConfig := api.Config{
+			Actions: actions,
+		}
+		apiServer := api.NewServer(serverConfig)
+
 		// Setup Router
-		mux := http.NewServeMux()
-
-		// Health Endpoint (Protected)
-		mux.Handle("/health", auth.RequireToken(http.HandlerFunc(api.HealthHandler)))
-
-		// Locations Endpoint (Protected)
-		mux.Handle("/api/locations", auth.RequireToken(http.HandlerFunc(api.LocationsHandler)))
-
-		// Actions Endpoint (Protected)
-		mux.Handle("/api/actions", auth.RequireToken(http.HandlerFunc(api.ActionsHandler)))
+		handler := apiServer.Routes(authenticator.Middleware)
 
 		server := &http.Server{
 			Addr:    addr,
-			Handler: mux,
+			Handler: handler,
 		}
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

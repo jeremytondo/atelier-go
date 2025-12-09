@@ -9,7 +9,15 @@ import (
 	"strings"
 )
 
-var currentToken string
+// Authenticator handles token-based authentication.
+type Authenticator struct {
+	token string
+}
+
+// NewAuthenticator creates a new Authenticator with the given token.
+func NewAuthenticator(token string) *Authenticator {
+	return &Authenticator{token: token}
+}
 
 // GetDefaultTokenPath returns the XDG-compliant path for the token file
 func GetDefaultTokenPath() (string, error) {
@@ -31,7 +39,6 @@ func GetDefaultTokenPath() (string, error) {
 func LoadOrCreateToken(path string) (string, error) {
 	// Check environment variable first
 	if envToken := os.Getenv("ATELIER_TOKEN"); envToken != "" {
-		currentToken = envToken
 		return envToken, nil
 	}
 
@@ -55,7 +62,6 @@ func LoadOrCreateToken(path string) (string, error) {
 	if err == nil {
 		token := strings.TrimSpace(string(content))
 		if token != "" {
-			currentToken = token
 			return token, nil
 		}
 	} else if !os.IsNotExist(err) {
@@ -74,7 +80,6 @@ func LoadOrCreateToken(path string) (string, error) {
 		return "", fmt.Errorf("failed to write token file: %w", err)
 	}
 
-	currentToken = token
 	return token, nil
 }
 
@@ -101,9 +106,4 @@ func SaveToken(path, token string) error {
 	}
 
 	return nil
-}
-
-// GetCurrentToken returns the currently loaded token
-func GetCurrentToken() string {
-	return currentToken
 }

@@ -14,7 +14,7 @@ type LocationsResponse struct {
 	Paths    []string         `json:"paths"`
 }
 
-func LocationsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

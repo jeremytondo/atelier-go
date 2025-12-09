@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"atelier-go/internal/system"
-
-	"github.com/spf13/viper"
 )
 
 type Action struct {
@@ -19,17 +17,15 @@ type ActionsResponse struct {
 	IsProject bool     `json:"is_project"`
 }
 
-func ActionsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ActionsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var actions []Action
-	if err := viper.UnmarshalKey("actions", &actions); err != nil {
-		// If unmarshal fails, we start with an empty list
-		actions = []Action{}
-	}
+	// Copy configured actions
+	actions := make([]Action, len(s.config.Actions))
+	copy(actions, s.config.Actions)
 
 	// Ensure default shell action exists
 	hasShell := false
