@@ -32,9 +32,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Artifacts
+      - name: Upload Checksums
         uses: actions/upload-artifact@v4
         with:
-          name: snapshot-binaries
-          path: dist/*
-          retention-days: 5 # Good practice to clean up old snapshots
+          name: checksums
+          path: dist/checksums.txt
+          retention-days: 5
+
+      - name: Upload Linux Builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: dist/*_linux_*.tar.gz
+          retention-days: 5
+
+      - name: Upload macOS Builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: dist/*_darwin_*.tar.gz
+          retention-days: 5
+
+      - name: Upload Windows Builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: dist/*_windows_*.zip
+          retention-days: 5
