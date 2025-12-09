@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// RequireToken verifies the Authorization header against the loaded token.
-func RequireToken(next http.Handler) http.Handler {
+// Middleware verifies the Authorization header against the loaded token.
+func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -22,7 +22,7 @@ func RequireToken(next http.Handler) http.Handler {
 		}
 
 		token := parts[1]
-		if token != currentToken {
+		if token != a.token {
 			http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
 			return
 		}

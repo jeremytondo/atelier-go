@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -38,6 +41,10 @@ var serverCmd = &cobra.Command{
 		system.LoadConfig("server")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		// Setup Logger
+		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+		slog.SetDefault(logger)
+
 		host := viper.GetString("host")
 		if host == "" {
 			host = "0.0.0.0"
@@ -48,35 +55,72 @@ var serverCmd = &cobra.Command{
 		// Initialize Token
 		tokenPath, err := auth.GetDefaultTokenPath()
 		if err != nil {
-			log.Fatalf("Failed to get token path: %v", err)
+			logger.Error("Failed to get token path", "error", err)
+			os.Exit(1)
 		}
 		token, err := auth.LoadOrCreateToken(tokenPath)
 		if err != nil {
-			log.Fatalf("Failed to initialize token: %v", err)
+			logger.Error("Failed to initialize token", "error", err)
+			os.Exit(1)
 		}
+		authenticator := auth.NewAuthenticator(token)
 
 		printStartupBanner(addr, token)
 
+		// Load Configuration
+		var actions []api.Action
+		if err := viper.UnmarshalKey("actions", &actions); err != nil {
+			logger.Warn("Failed to load actions config", "error", err)
+			actions = []api.Action{}
+		}
+
+		// Create Server
+		serverConfig := api.Config{
+			Actions: actions,
+		}
+		apiServer := api.NewServer(serverConfig)
+
 		// Setup Router
-		mux := http.NewServeMux()
-
-		// Health Endpoint (Protected)
-		mux.Handle("/health", auth.RequireToken(http.HandlerFunc(api.HealthHandler)))
-
-		// Locations Endpoint (Protected)
-		mux.Handle("/api/locations", auth.RequireToken(http.HandlerFunc(api.LocationsHandler)))
-
-		// Actions Endpoint (Protected)
-		mux.Handle("/api/actions", auth.RequireToken(http.HandlerFunc(api.ActionsHandler)))
+		handler := apiServer.Routes(authenticator.Middleware)
 
 		server := &http.Server{
 			Addr:    addr,
-			Handler: mux,
+			Handler: handler,
 		}
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+		// Start Server in Goroutine
+		go func() {
+			logger.Info("Starting server", "address", addr)
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Error("Server failed", "error", err)
+				os.Exit(1)
+			}
+		}()
+
+		// Wait for Interrupt Signal
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+		<-stop
+		logger.Info("Shutting down server...")
+
+		// Context with timeout for graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error("Server forced to shutdown", "error", err)
 		}
+
+		// Cleanup PID file
+		if err := system.RemovePIDFile(); err != nil {
+			// It's okay if it doesn't exist
+			if !os.IsNotExist(err) {
+				logger.Warn("Failed to remove PID file", "error", err)
+			}
+		}
+
+		logger.Info("Server exited")
 	},
 }
 
@@ -98,33 +142,29 @@ var serverStartCmd = &cobra.Command{
 		// Find the executable
 		exe, err := os.Executable()
 		if err != nil {
-			log.Fatalf("Failed to determine executable path: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to determine executable path: %v\n", err)
+			os.Exit(1)
 		}
 
 		// Start the process detached
 		startCmd := exec.Command(exe, "server")
-		// Detach logic usually involves redirecting std I/O and handling process groups,
-		// but simply starting it via exec without waiting and letting it write its PID is often enough for simple use cases.
-		// However, to truly background it and have it survive the parent shell exit, we might want to setsid.
-		// For simplicity in this Go implementation, we'll start it and just not Wait().
-		// Since the parent (this CLI command) exits immediately, the child effectively becomes a daemon.
 
-		// Redirect output to log file? Or just /dev/null for now?
-		// A proper background service should probably log somewhere.
-		// For now, let's inherit environment but detach I/O so it doesn't hang the terminal.
+		// Detach I/O to prevent hanging the terminal
 		startCmd.Stdout = nil
 		startCmd.Stderr = nil
 		startCmd.Stdin = nil
 
 		if err := startCmd.Start(); err != nil {
-			log.Fatalf("Failed to start server: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
+			os.Exit(1)
 		}
 
 		// Write PID file
 		if err := system.WritePIDFile(startCmd.Process.Pid); err != nil {
 			// Try to kill the process if we can't write the PID file
 			startCmd.Process.Kill()
-			log.Fatalf("Failed to write PID file: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to write PID file: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("Server started in background (PID: %d)\n", startCmd.Process.Pid)
@@ -181,7 +221,8 @@ var serverInstallCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		exe, err := os.Executable()
 		if err != nil {
-			log.Fatalf("Failed to determine executable path: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to determine executable path: %v\n", err)
+			os.Exit(1)
 		}
 
 		// Template for systemd service
@@ -207,13 +248,15 @@ WantedBy=default.target
 
 		home, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatalf("Failed to get user home directory: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to get user home directory: %v\n", err)
+			os.Exit(1)
 		}
 
 		// Ensure ~/.local/share/systemd/user exists
 		serviceDir := filepath.Join(home, ".local", "share", "systemd", "user")
 		if err := os.MkdirAll(serviceDir, 0755); err != nil {
-			log.Fatalf("Failed to create systemd directory: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to create systemd directory: %v\n", err)
+			os.Exit(1)
 		}
 
 		servicePath := filepath.Join(serviceDir, "atelier-go.service")
@@ -221,17 +264,20 @@ WantedBy=default.target
 		// Generate file
 		f, err := os.Create(servicePath)
 		if err != nil {
-			log.Fatalf("Failed to create service file: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to create service file: %v\n", err)
+			os.Exit(1)
 		}
 		defer f.Close()
 
 		tmpl, err := template.New("service").Parse(serviceTmpl)
 		if err != nil {
-			log.Fatalf("Failed to parse template: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to parse template: %v\n", err)
+			os.Exit(1)
 		}
 
 		if err := tmpl.Execute(f, data); err != nil {
-			log.Fatalf("Failed to write service file: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to write service file: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Printf("Service file created at %s\n", servicePath)
@@ -258,12 +304,14 @@ var serverTokenCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		tokenPath, err := auth.GetDefaultTokenPath()
 		if err != nil {
-			log.Fatalf("Failed to get token path: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to get token path: %v\n", err)
+			os.Exit(1)
 		}
 
 		token, err := auth.LoadOrCreateToken(tokenPath)
 		if err != nil {
-			log.Fatalf("Failed to load token: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to load token: %v\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Println(token)
