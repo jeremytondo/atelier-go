@@ -8,20 +8,18 @@ import (
 	"atelier-go/internal/system"
 )
 
-// SessionInfo holds the calculated session ID and window title.
+// SessionInfo holds the calculated session ID.
 type SessionInfo struct {
-	ID    string
-	Title string
+	ID string
 }
 
-// PrepareSessionInfo calculates the session ID and window title based on inputs.
+// PrepareSessionInfo calculates the session ID based on inputs.
 func PrepareSessionInfo(path, name, actionName string, isProject bool) SessionInfo {
 	if isProject {
 		safeName := strings.ReplaceAll(strings.ToLower(name), " ", "-")
 		safeActionName := strings.ReplaceAll(strings.ToLower(actionName), " ", "-")
 		return SessionInfo{
-			ID:    fmt.Sprintf("[%s:%s]", safeName, safeActionName),
-			Title: fmt.Sprintf("%s - %s", name, actionName),
+			ID: fmt.Sprintf("[%s:%s]", safeName, safeActionName),
 		}
 	}
 
@@ -29,8 +27,7 @@ func PrepareSessionInfo(path, name, actionName string, isProject bool) SessionIn
 	safeAction := strings.ReplaceAll(actionName, " ", "-")
 	id := fmt.Sprintf("[%s:%s]", safePath, safeAction)
 	return SessionInfo{
-		ID:    id,
-		Title: id,
+		ID: id,
 	}
 }
 
@@ -101,11 +98,11 @@ func BuildStartArgs(host, path string, info SessionInfo, actionCmd string) (stri
 		"-t", host,
 	}
 
-	if info.Title != "" {
-		// printf "\033]2;%s\007" "Title"
-		// We escape double quotes in the title
-		safeTitle := strings.ReplaceAll(info.Title, "\"", "\\\"")
-		args = append(args, "printf", fmt.Sprintf("\"\\033]2;%s\\007\"", safeTitle), "&&")
+	if info.ID != "" {
+		// printf "\033]2;%s\007" "ID"
+		// We escape double quotes in the ID
+		safeID := strings.ReplaceAll(info.ID, "\"", "\\\"")
+		args = append(args, "printf", fmt.Sprintf("\"\\033]2;%s\\007\"", safeID), "&&")
 	}
 
 	args = append(args,
