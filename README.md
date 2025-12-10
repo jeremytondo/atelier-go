@@ -39,7 +39,7 @@ Here’s how to get Atelier Go up and running quickly:
     atelier-go server start
     ```
 
-    >[!Note] When the server starts it will create and display a token. You'll need this to connect the client.
+    > [!Note] When the server starts it will create and display a token. You'll need this to connect the client.
 
 5.  **Connect the client**
 
