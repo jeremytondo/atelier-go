@@ -21,6 +21,9 @@ Here’s how to get Atelier Go up and running quickly:
     *   For Linux/macOS, you'll typically download a `.tar.gz` file.
     *   For Windows, you'll usually download a `.zip` file.
 
+    **Install**
+    You'll need to add this to a location that's included in your path on both the client and server machines.
+
 2.  **Verify installation:**
     Open a new terminal and run:
     ```bash
@@ -29,11 +32,24 @@ Here’s how to get Atelier Go up and running quickly:
     You should see the version number printed.
 
 3.  **Start using Atelier Go:**
-    Once installed, you can start configuring your remote projects and sessions.
+
+    On the server:
     ```bash
     atelier-go server start # Start the server in the background
-    atelier-go client # Connect to the server to select a session or project
     ```
+
+    When the server starts it will create and display a token. You'll need this to connect the client.
+
+    On the client machine, run:
+    ```bash
+    atelier-go client login <token>
+    ```
+
+    Then you're good to go, you can run the following to start using it.
+    ```bash
+    atelier-go client
+    ```
+
     Refer to the Documentation section for detailed usage.
 
 ## Documentation
