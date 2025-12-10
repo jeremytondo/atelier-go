@@ -104,15 +104,15 @@ func (c *Client) Attach(sessionName string) error {
 
 // Start creates and attaches to a new session.
 func (c *Client) Start(path, name string, action api.Action, isProject bool) error {
-	// Prepare session info (ID and Title)
+	// Prepare session info (ID)
 	info := shell.PrepareSessionInfo(path, name, action.Name, isProject)
 
 	// Build the command arguments
 	bin, args := shell.BuildStartArgs(c.Host, path, info, action.Command)
 
 	// Update local title if running locally
-	if system.IsLocal(c.Host) && info.Title != "" {
-		fmt.Printf("\033]2;%s\007", info.Title)
+	if system.IsLocal(c.Host) && info.ID != "" {
+		fmt.Printf("\033]2;%s\007", info.ID)
 	}
 
 	if bin == "ssh" {
