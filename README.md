@@ -37,7 +37,7 @@ You should see the version number printed.
 On the server:
 ```bash
 atelier-go server start
-    ```
+```
 
 
 > [!NOTE]
