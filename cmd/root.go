@@ -8,9 +8,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "atelier-go",
-	Short: "Atelier Go - Remote Development Server & Client",
+	Use:     "atelier-go",
+	Version: version,
+	Short:   "Atelier Go - Remote Development Server & Client",
 	Long: `Atelier Go is a unified tool for managing remote development environments.
 
 It consists of two parts:
@@ -37,6 +40,9 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Add version flag with shorthand -v
+	rootCmd.Flags().BoolP("version", "v", false, "Print the version number")
 
 	// Global flags (optional, but good practice to map them)
 	rootCmd.PersistentFlags().String("host", "", "Host to connect to (client) or bind to (server)")

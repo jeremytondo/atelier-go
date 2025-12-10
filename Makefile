@@ -3,6 +3,9 @@
 # Binary output path
 BINARY_NAME=bin/atelier-go
 
+# Version info for local builds
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -10,7 +13,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 
 # Build flags
-LDFLAGS=-ldflags "-s -w"
+LDFLAGS=-ldflags "-s -w -X atelier-go/cmd.version=$(VERSION)"
 
 .PHONY: all build clean test run help
 
