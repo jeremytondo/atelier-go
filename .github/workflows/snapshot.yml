@@ -24,7 +24,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: ~> v2
           # --snapshot: builds but doesn't publish
           # --skip=publish: ensures we don't try to push anything
           # --clean: removes dist folder before building
@@ -39,23 +39,46 @@ jobs:
           path: dist/checksums.txt
           retention-days: 5
 
-      - name: Upload Linux Builds
+      # Linux AMD64
+      - name: Set Linux AMD64 Name
+        id: linux-amd64
+        run: echo "filename=$(basename dist/*_linux_amd64.tar.gz)" >> $GITHUB_OUTPUT
+      - name: Upload Linux AMD64
         uses: actions/upload-artifact@v4
         with:
-          name: linux-builds
-          path: dist/*_linux_*.tar.gz
+          name: ${{ steps.linux-amd64.outputs.filename }}
+          path: dist/${{ steps.linux-amd64.outputs.filename }}
           retention-days: 5
 
-      - name: Upload macOS Builds
+      # Linux ARM64
+      - name: Set Linux ARM64 Name
+        id: linux-arm64
+        run: echo "filename=$(basename dist/*_linux_arm64.tar.gz)" >> $GITHUB_OUTPUT
+      - name: Upload Linux ARM64
         uses: actions/upload-artifact@v4
         with:
-          name: macos-builds
-          path: dist/*_darwin_*.tar.gz
+          name: ${{ steps.linux-arm64.outputs.filename }}
+          path: dist/${{ steps.linux-arm64.outputs.filename }}
           retention-days: 5
 
-      - name: Upload Windows Builds
+      # macOS AMD64
+      - name: Set macOS AMD64 Name
+        id: macos-amd64
+        run: echo "filename=$(basename dist/*_darwin_amd64.tar.gz)" >> $GITHUB_OUTPUT
+      - name: Upload macOS AMD64
         uses: actions/upload-artifact@v4
         with:
-          name: windows-builds
-          path: dist/*_windows_*.zip
+          name: ${{ steps.macos-amd64.outputs.filename }}
+          path: dist/${{ steps.macos-amd64.outputs.filename }}
+          retention-days: 5
+
+      # macOS ARM64
+      - name: Set macOS ARM64 Name
+        id: macos-arm64
+        run: echo "filename=$(basename dist/*_darwin_arm64.tar.gz)" >> $GITHUB_OUTPUT
+      - name: Upload macOS ARM64
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.macos-arm64.outputs.filename }}
+          path: dist/${{ steps.macos-arm64.outputs.filename }}
           retention-days: 5
