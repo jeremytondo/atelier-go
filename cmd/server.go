@@ -36,7 +36,11 @@ func printStartupBanner(addr, token string) {
 
 var serverCmd = &cobra.Command{
 	Use:   "server",
-	Short: "Start the Atelier daemon",
+	Short: "Run the Atelier server (foreground)",
+	Long: `Starts the Atelier server process in the current terminal window.
+This is useful for debugging or running in a container.
+For normal usage, consider using 'server start' to run in the background.`,
+	Example: `  atelier-go server --port 9005`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		system.LoadConfig("server")
 	},
@@ -127,6 +131,10 @@ var serverCmd = &cobra.Command{
 var serverStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the server in the background",
+	Long: `Starts the Atelier server as a detached background process.
+It writes a PID file to ensure only one instance runs at a time.
+Use 'server stop' to shut it down.`,
+	Example: `  atelier-go server start`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if already running
 		pid, err := system.ReadPIDFile()
@@ -190,6 +198,9 @@ var serverStartCmd = &cobra.Command{
 var serverStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the background server",
+	Long: `Stops the currently running background server instance
+identified by the PID file.`,
+	Example: `  atelier-go server stop`,
 	Run: func(cmd *cobra.Command, args []string) {
 		pid, err := system.ReadPIDFile()
 		if err != nil {
@@ -218,6 +229,10 @@ var serverStopCmd = &cobra.Command{
 var serverInstallCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install the server as a systemd user service",
+	Long: `Generates a systemd user service file and installs it.
+This allows the Atelier server to start automatically when you log in.
+Files are installed to ~/.local/share/systemd/user/.`,
+	Example: `  atelier-go server install`,
 	Run: func(cmd *cobra.Command, args []string) {
 		exe, err := os.Executable()
 		if err != nil {
@@ -301,6 +316,10 @@ WantedBy=default.target
 var serverTokenCmd = &cobra.Command{
 	Use:   "token",
 	Short: "Print the current authentication token",
+	Long: `Retrieves and prints the current authentication token.
+This is useful if you need to manually configure a client or script
+authentication.`,
+	Example: `  atelier-go server token`,
 	Run: func(cmd *cobra.Command, args []string) {
 		tokenPath, err := auth.GetDefaultTokenPath()
 		if err != nil {
@@ -320,7 +339,10 @@ var serverTokenCmd = &cobra.Command{
 
 var serverStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Check the status of the Atelier daemon",
+	Short: "Check the status of the Atelier server",
+	Long: `Sends a health check request to the running server.
+Verifies that the server process is running and responding to HTTP requests.`,
+	Example: `  atelier-go server status`,
 	Run: func(cmd *cobra.Command, args []string) {
 		host := viper.GetString("host")
 		if host == "" || host == "0.0.0.0" {
