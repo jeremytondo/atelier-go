@@ -19,8 +19,6 @@ Here’s how to get Atelier Go up and running quickly:
 1.  **Download the binary:**
 
     Grab the latest release for your operating system from the [GitHub Releases page](https://github.com/jeremytondo/atelier-go/releases).
-    *   For Linux/macOS, you'll typically download a `.tar.gz` file.
-    *   For Windows, you'll usually download a `.zip` file.
 
 2.  **Install**
 
@@ -38,10 +36,10 @@ Here’s how to get Atelier Go up and running quickly:
 
     On the server:
     ```bash
-    atelier-go server start # Start the server in the background
+    atelier-go server start
     ```
 
-    When the server starts it will create and display a token. You'll need this to connect the client.
+    >[!Note] When the server starts it will create and display a token. You'll need this to connect the client.
 
 5.  **Connect the client**
 
