@@ -24,7 +24,24 @@ const (
 
 var clientCmd = &cobra.Command{
 	Use:   "client",
-	Short: "Connect to the Atelier daemon",
+	Short: "Connect to the server and manage sessions",
+	Long: `The client command connects to the running Atelier server.
+
+It presents an interactive list of:
+- Active 'shpool' sessions
+- Defined projects
+- Frequent directories (via zoxide)
+
+You can filter this list using flags. Selecting an item will either attach
+to an existing session or start a new one in that location.`,
+	Example: `  # Default: Show sessions, projects, and frequent paths
+  atelier-go client
+
+  # Show only active sessions
+  atelier-go client --sessions
+
+  # Show ALL directories (can be slow)
+  atelier-go client --all`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		system.LoadConfig("client")
 	},

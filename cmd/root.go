@@ -10,7 +10,22 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "atelier-go",
-	Short: "Atelier Go - Remote Development Daemon & Client",
+	Short: "Atelier Go - Remote Development Server & Client",
+	Long: `Atelier Go is a unified tool for managing remote development environments.
+
+It consists of two parts:
+1. A Server that runs on your development machine/host.
+2. A Client that you run to connect, manage, and attach to sessions.
+
+It integrates with 'shpool' for persistent sessions and 'zoxide' for smart path navigation.`,
+	Example: `  # Start the server in the background
+  atelier-go server start
+
+  # Connect to the server to select a session or project
+  atelier-go client
+
+  # Check server status
+  atelier-go server status`,
 }
 
 func Execute() {
