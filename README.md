@@ -21,17 +21,18 @@ Here’s how to get Atelier Go up and running quickly:
     *   For Linux/macOS, you'll typically download a `.tar.gz` file.
     *   For Windows, you'll usually download a `.zip` file.
 
-    **Install**
+2.  **Install**
+
     You'll need to add this to a location that's included in your path on both the client and server machines.
 
-2.  **Verify installation:**
+3.  **Verify installation:**
     Open a new terminal and run:
     ```bash
     atelier-go --version
     ```
     You should see the version number printed.
 
-3.  **Start using Atelier Go:**
+4.  **Start the server:**
 
     On the server:
     ```bash
@@ -40,12 +41,14 @@ Here’s how to get Atelier Go up and running quickly:
 
     When the server starts it will create and display a token. You'll need this to connect the client.
 
+5.  **Connect the client**
     On the client machine, run:
     ```bash
     atelier-go client login <token>
     ```
 
-    Then you're good to go, you can run the following to start using it.
+6. **Start using Atelier Go**
+
     ```bash
     atelier-go client
     ```
