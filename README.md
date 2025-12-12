@@ -39,7 +39,6 @@ On the server:
 atelier-go server start
 ```
 
-
 > [!NOTE]
 > When the server starts it will create and display a token. You'll need this to connect the client.
 
@@ -48,7 +47,7 @@ atelier-go server start
 On the client machine, run:
 ```bash
 atelier-go client login <token>
-    ```
+```
 
 **Start using Atelier Go**
 
@@ -86,8 +85,27 @@ It presents an interactive list of:
 - Defined projects
 - Frequent directories (via zoxide)
 
-You can filter this list using flags. Selecting an item will either attach
-to an existing session or start a new one in that location.
+**Interactive Mode:**
+Once inside the interactive list, you can use keyboard shortcuts to switch filters dynamically:
+
+*   **Ctrl-S**: Active Sessions
+*   **Ctrl-P**: Projects
+*   **Ctrl-F**: Frequent Directories (Zoxide)
+*   **Ctrl-A**: All Directories (fd)
+
+**Configuration:**
+You can configure the default filter and custom keybindings in `~/.config/atelier-go/client.toml`:
+
+```toml
+# Set the default filter (sessions, projects, frequent, all)
+default-filter = "projects"
+
+[keys]
+sessions = "ctrl-s"
+projects = "ctrl-p"
+frequent = "ctrl-f"
+all = "ctrl-a"
+```
 
 **Usage:**
 ```
@@ -103,13 +121,21 @@ atelier-go client
 # Show only active sessions
 atelier-go client --sessions
 
+# Show only projects
+atelier-go client --projects
+
+# Show frequent directories (default fallback)
+atelier-go client --frequent
+
 # Show ALL directories (can be slow)
 atelier-go client --all
 ```
 
 **Flags:**
 *   `-a, --all`: Show all directories in home
+*   `-f, --frequent`: Show frequent directories (zoxide)
 *   `-h, --help`: help for client
+*   `-p, --projects`: Show projects only
 *   `-s, --sessions`: Show open sessions only
 
 ##### `atelier-go client login`
