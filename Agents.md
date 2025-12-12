@@ -47,6 +47,10 @@ When initiating a new session in a target directory, the user can choose from th
 2. **Shell:** Launches a standard interactive shell (`bash` or configured `$SHELL`).
 3. **Opencode:** Launches the `opencode` CLI agent in the target directory.
 
+## Configuration Conventions
+
+- **Parameter Naming:** All keys in configuration files (e.g., `client.toml`) MUST use **kebab-case** (e.g., `default-filter`, `log-level`) instead of snake_case or camelCase.
+
 ## Agent Behavior
 
 - NEVER commit anything to git.

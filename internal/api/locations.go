@@ -27,7 +27,7 @@ func (s *Server) LocationsHandler(w http.ResponseWriter, r *http.Request) {
 
 	filter := r.URL.Query().Get("filter")
 	if filter == "" {
-		filter = "frequent"
+		filter = FilterFrequent
 	}
 
 	// Calculate which concurrent tasks to run
@@ -37,16 +37,17 @@ func (s *Server) LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	pathSource := "zoxide" // "zoxide" or "fd"
 
 	switch filter {
-	case "sessions":
+	case FilterSessions:
 		runPaths = false
-	case "projects":
+	case FilterProjects:
+		runSessions = false
 		runPaths = false
 		runProjects = true
-	case "all":
+	case FilterAll:
 		runPaths = true
 		runProjects = true
 		pathSource = "fd"
-	default: // "frequent"
+	default: // FilterFrequent
 		runPaths = true
 		runProjects = true
 		pathSource = "zoxide"
