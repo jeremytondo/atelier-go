@@ -41,6 +41,9 @@ to an existing session or start a new one in that location.`,
   # Show only active sessions
   atelier-go client --sessions
 
+  # Show only projects
+  atelier-go client --projects
+
   # Show ALL directories (can be slow)
   atelier-go client --all`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -49,11 +52,14 @@ to an existing session or start a new one in that location.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		all, _ := cmd.Flags().GetBool("all")
 		sessions, _ := cmd.Flags().GetBool("sessions")
+		projects, _ := cmd.Flags().GetBool("projects")
 		listMode, _ := cmd.Flags().GetBool("list")
 
 		filter := "frequent"
 		if sessions {
 			filter = "sessions"
+		} else if projects {
+			filter = "projects"
 		} else if all {
 			filter = "all"
 		}
@@ -85,6 +91,7 @@ var clientLoginCmd = &cobra.Command{
 func init() {
 	clientCmd.Flags().BoolP("all", "a", false, "Show all directories in home")
 	clientCmd.Flags().BoolP("sessions", "s", false, "Show open sessions only")
+	clientCmd.Flags().BoolP("projects", "p", false, "Show projects only")
 	clientCmd.Flags().Bool("list", false, "Output raw list for fzf (internal use)")
 	rootCmd.AddCommand(clientCmd)
 	clientCmd.AddCommand(clientLoginCmd)
@@ -230,6 +237,7 @@ func runFzfWithBindings(items []string, currentFilter string) (string, error) {
 	// Default bindings
 	bindings := map[string]string{
 		"sessions": "ctrl-s",
+		"projects": "ctrl-p",
 		"all":      "ctrl-a",
 		"frequent": "ctrl-f",
 	}
@@ -244,7 +252,7 @@ func runFzfWithBindings(items []string, currentFilter string) (string, error) {
 	var headerParts []string
 
 	// Define order for header
-	order := []string{"sessions", "frequent", "all"}
+	order := []string{"sessions", "projects", "frequent", "all"}
 
 	for _, mode := range order {
 		key, ok := bindings[mode]
@@ -256,6 +264,8 @@ func runFzfWithBindings(items []string, currentFilter string) (string, error) {
 		flag := ""
 		if mode == "sessions" {
 			flag = " --sessions"
+		} else if mode == "projects" {
+			flag = " --projects"
 		} else if mode == "all" {
 			flag = " --all"
 		}
