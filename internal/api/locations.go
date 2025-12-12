@@ -40,6 +40,7 @@ func (s *Server) LocationsHandler(w http.ResponseWriter, r *http.Request) {
 	case "sessions":
 		runPaths = false
 	case "projects":
+		runSessions = false
 		runPaths = false
 		runProjects = true
 	case "all":

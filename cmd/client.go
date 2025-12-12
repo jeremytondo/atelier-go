@@ -205,9 +205,11 @@ func fetchAndFormatLocations(c *client.Client, filter string) ([]string, error) 
 	var options []string
 
 	// Add Sessions first with icon
-	for _, s := range locations.Sessions {
-		// Format: Icon SessionName \t SessionName
-		options = append(options, fmt.Sprintf("%s %s\t%s", iconSession, s, s))
+	if filter != "projects" {
+		for _, s := range locations.Sessions {
+			// Format: Icon SessionName \t SessionName
+			options = append(options, fmt.Sprintf("%s %s\t%s", iconSession, s, s))
+		}
 	}
 	// Add Projects
 	for _, p := range locations.Projects {
