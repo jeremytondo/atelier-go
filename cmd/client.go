@@ -2,10 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io"
-	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +10,7 @@ import (
 	"atelier-go/internal/auth"
 	"atelier-go/internal/client"
 	"atelier-go/internal/system"
+	"atelier-go/internal/ui"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,19 +48,8 @@ to an existing session or start a new one in that location.`,
 		system.LoadConfig("client")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		all, _ := cmd.Flags().GetBool("all")
-		sessions, _ := cmd.Flags().GetBool("sessions")
-		projects, _ := cmd.Flags().GetBool("projects")
 		listMode, _ := cmd.Flags().GetBool("list")
-
-		filter := "frequent"
-		if sessions {
-			filter = "sessions"
-		} else if projects {
-			filter = "projects"
-		} else if all {
-			filter = "all"
-		}
+		filter := determineFilter(cmd)
 		runClient(filter, listMode)
 	},
 }
@@ -95,6 +82,23 @@ func init() {
 	clientCmd.Flags().Bool("list", false, "Output raw list for fzf (internal use)")
 	rootCmd.AddCommand(clientCmd)
 	clientCmd.AddCommand(clientLoginCmd)
+}
+
+func determineFilter(cmd *cobra.Command) string {
+	all, _ := cmd.Flags().GetBool("all")
+	sessions, _ := cmd.Flags().GetBool("sessions")
+	projects, _ := cmd.Flags().GetBool("projects")
+
+	if sessions {
+		return api.FilterSessions
+	}
+	if projects {
+		return api.FilterProjects
+	}
+	if all {
+		return api.FilterAll
+	}
+	return api.FilterFrequent
 }
 
 func runClient(filter string, listMode bool) {
@@ -140,7 +144,7 @@ func runClient(filter string, listMode bool) {
 	}
 
 	// 3. Select Location via FZF
-	selection, err := runFzfWithBindings(options, filter)
+	selection, err := ui.RunFzfWithBindings(options, filter)
 	if err != nil {
 		// User likely cancelled
 		os.Exit(0)
@@ -177,7 +181,7 @@ func runClient(filter string, listMode bool) {
 			actions = actionsResp.Actions
 		}
 
-		action, err := selectAction(realPath, actions)
+		action, err := ui.SelectAction(realPath, actions)
 		if err != nil {
 			os.Exit(0)
 		}
@@ -205,7 +209,7 @@ func fetchAndFormatLocations(c *client.Client, filter string) ([]string, error) 
 	var options []string
 
 	// Add Sessions first with icon
-	if filter != "projects" {
+	if filter != api.FilterProjects {
 		for _, s := range locations.Sessions {
 			// Format: Icon SessionName \t SessionName
 			options = append(options, fmt.Sprintf("%s %s\t%s", iconSession, s, s))
@@ -228,143 +232,4 @@ func fetchAndFormatLocations(c *client.Client, filter string) ([]string, error) 
 	}
 
 	return options, nil
-}
-
-func runFzfWithBindings(items []string, currentFilter string) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		exe = "atelier-go"
-	}
-
-	// Default bindings
-	bindings := map[string]string{
-		"sessions": "ctrl-s",
-		"projects": "ctrl-p",
-		"all":      "ctrl-a",
-		"frequent": "ctrl-f",
-	}
-
-	// Override with config
-	if viper.IsSet("keys") {
-		keys := viper.GetStringMapString("keys")
-		maps.Copy(bindings, keys)
-	}
-
-	var bindArgs []string
-	var headerParts []string
-
-	// Define order for header
-	order := []string{"sessions", "projects", "frequent", "all"}
-
-	for _, mode := range order {
-		key, ok := bindings[mode]
-		if !ok {
-			continue
-		}
-
-		// Determine flag
-		flag := ""
-		if mode == "sessions" {
-			flag = " --sessions"
-		} else if mode == "projects" {
-			flag = " --projects"
-		} else if mode == "all" {
-			flag = " --all"
-		}
-
-		label := toTitle(mode)
-
-		// Construct reload command
-		// e.g. /path/to/atelier-go client --list --sessions
-		cmdStr := fmt.Sprintf("%s client --list%s", exe, flag)
-
-		// Construct bind string
-		// e.g. ctrl-s:reload(...)+change-prompt(Sessions ➜ )
-		bind := fmt.Sprintf("%s:reload(%s)+change-prompt(%s ➜ )", key, cmdStr, label)
-		bindArgs = append(bindArgs, "--bind", bind)
-
-		headerParts = append(headerParts, fmt.Sprintf("%s: %s", strings.ToUpper(key), label))
-	}
-
-	header := strings.Join(headerParts, " | ")
-	prompt := toTitle(currentFilter) + " ➜ "
-
-	cmd := exec.Command("fzf",
-		"--height=40%",
-		"--layout=reverse",
-		"--border",
-		"--prompt="+prompt,
-		"--delimiter=\t",
-		"--with-nth=1",
-		"--header="+header,
-		"--header-first",
-	)
-
-	// Add bind args
-	cmd.Args = append(cmd.Args, bindArgs...)
-
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return "", err
-	}
-
-	go func() {
-		defer stdin.Close()
-		for _, item := range items {
-			io.WriteString(stdin, item+"\n")
-		}
-	}()
-
-	output, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(output)), nil
-}
-
-func selectAction(path string, actions []api.Action) (api.Action, error) {
-	var names []string
-	for _, a := range actions {
-		names = append(names, a.Name)
-	}
-
-	header := fmt.Sprintf("Select Action for %s", filepath.Base(path))
-
-	cmd := exec.Command("fzf", "--height=20%", "--layout=reverse", "--border", "--header="+header, "--prompt=Action ➜ ")
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return api.Action{}, err
-	}
-
-	go func() {
-		defer stdin.Close()
-		for _, n := range names {
-			io.WriteString(stdin, n+"\n")
-		}
-	}()
-
-	output, err := cmd.Output()
-	if err != nil {
-		return api.Action{}, err
-	}
-	selectedName := strings.TrimSpace(string(output))
-
-	for _, a := range actions {
-		if a.Name == selectedName {
-			return a, nil
-		}
-	}
-	return api.Action{}, fmt.Errorf("action not found")
-}
-
-func toTitle(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
 }
