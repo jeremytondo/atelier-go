@@ -54,6 +54,8 @@ func RunFzfWithBindings(items []string, currentFilter string) (string, error) {
 			flag = " --projects"
 		case api.FilterAll:
 			flag = " --all"
+		case api.FilterFrequent:
+			flag = " --frequent"
 		}
 
 		label := toTitle(mode)

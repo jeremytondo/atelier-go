@@ -79,15 +79,16 @@ func init() {
 	clientCmd.Flags().BoolP("all", "a", false, "Show all directories in home")
 	clientCmd.Flags().BoolP("sessions", "s", false, "Show open sessions only")
 	clientCmd.Flags().BoolP("projects", "p", false, "Show projects only")
+	clientCmd.Flags().BoolP("frequent", "f", false, "Show frequent directories (zoxide)")
 	clientCmd.Flags().Bool("list", false, "Output raw list for fzf (internal use)")
 	rootCmd.AddCommand(clientCmd)
-	clientCmd.AddCommand(clientLoginCmd)
 }
 
 func determineFilter(cmd *cobra.Command) string {
 	all, _ := cmd.Flags().GetBool("all")
 	sessions, _ := cmd.Flags().GetBool("sessions")
 	projects, _ := cmd.Flags().GetBool("projects")
+	frequent, _ := cmd.Flags().GetBool("frequent")
 
 	if sessions {
 		return api.FilterSessions
@@ -98,6 +99,19 @@ func determineFilter(cmd *cobra.Command) string {
 	if all {
 		return api.FilterAll
 	}
+	if frequent {
+		return api.FilterFrequent
+	}
+
+	// Check configuration for default
+	// Use kebab-case "default-filter" as per convention
+	if def := viper.GetString("default-filter"); def != "" {
+		switch def {
+		case api.FilterSessions, api.FilterProjects, api.FilterAll, api.FilterFrequent:
+			return def
+		}
+	}
+
 	return api.FilterFrequent
 }
 
