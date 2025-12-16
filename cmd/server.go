@@ -136,46 +136,13 @@ It writes a PID file to ensure only one instance runs at a time.
 Use 'server stop' to shut it down.`,
 	Example: `  atelier-go server start`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check if already running
-		pid, err := system.ReadPIDFile()
-		if err == nil {
-			if system.IsProcessRunning(pid) {
-				fmt.Printf("Server is already running (PID: %d)\n", pid)
-				return
-			}
-			// PID file exists but process is dead, clean it up
-			system.RemovePIDFile()
-		}
-
-		// Find the executable
-		exe, err := os.Executable()
+		pid, err := system.StartDetached("server")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to determine executable path: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Start the process detached
-		startCmd := exec.Command(exe, "server")
-
-		// Detach I/O to prevent hanging the terminal
-		startCmd.Stdout = nil
-		startCmd.Stderr = nil
-		startCmd.Stdin = nil
-
-		if err := startCmd.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
 			os.Exit(1)
 		}
 
-		// Write PID file
-		if err := system.WritePIDFile(startCmd.Process.Pid); err != nil {
-			// Try to kill the process if we can't write the PID file
-			startCmd.Process.Kill()
-			fmt.Fprintf(os.Stderr, "Failed to write PID file: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Server started in background (PID: %d)\n", startCmd.Process.Pid)
+		fmt.Printf("Server started in background (PID: %d)\n", pid)
 
 		// Print the banner for the user
 		host := viper.GetString("host")
@@ -202,27 +169,17 @@ var serverStopCmd = &cobra.Command{
 identified by the PID file.`,
 	Example: `  atelier-go server stop`,
 	Run: func(cmd *cobra.Command, args []string) {
-		pid, err := system.ReadPIDFile()
+		stopped, err := system.StopDaemon()
 		if err != nil {
-			fmt.Println("No running server found (PID file missing).")
+			fmt.Printf("Error stopping server: %v\n", err)
 			return
 		}
 
-		proc, err := os.FindProcess(pid)
-		if err != nil {
-			fmt.Println("Could not find process.")
-			// Clean up stale file
-			system.RemovePIDFile()
-			return
+		if stopped {
+			fmt.Println("Server stopped.")
+		} else {
+			fmt.Println("No running server found.")
 		}
-
-		if err := proc.Kill(); err != nil {
-			fmt.Printf("Failed to stop server: %v\n", err)
-			return
-		}
-
-		system.RemovePIDFile()
-		fmt.Println("Server stopped.")
 	},
 }
 
@@ -389,11 +346,83 @@ Verifies that the server process is running and responding to HTTP requests.`,
 	},
 }
 
+// isSystemdServiceActive checks if the systemd service is active
+func isSystemdServiceActive() bool {
+	cmd := exec.Command("systemctl", "--user", "is-active", "atelier-go")
+	err := cmd.Run()
+	// systemctl is-active returns exit code 0 if active, non-zero otherwise
+	return err == nil
+}
+
+var serverRestartCmd = &cobra.Command{
+	Use:   "restart",
+	Short: "Restart the server",
+	Long: `Restarts the Atelier server. If the server is managed by systemd,
+it will use systemctl to restart. Otherwise, it will stop and start
+the background process using PID file management.`,
+	Example: `  atelier-go server restart`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Check if systemd is managing the service
+		if isSystemdServiceActive() {
+			fmt.Println("Restarting systemd service...")
+			restartCmd := exec.Command("systemctl", "--user", "restart", "atelier-go")
+			if err := restartCmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to restart systemd service: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Server restarted successfully")
+			return
+		}
+
+		// Not systemd-managed, use PID file approach
+		wasRunning, err := system.StopDaemon()
+		if err != nil {
+			fmt.Printf("Error stopping server: %v\n", err)
+			// Continue to try starting anyway?
+		}
+
+		if wasRunning {
+			fmt.Println("Server stopped. Starting server...")
+		} else {
+			fmt.Println("No running server found. Starting server...")
+		}
+
+		pid, err := system.StartDetached("server")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Server started in background (PID: %d)\n", pid)
+
+		// Print the banner for the user
+		host := viper.GetString("host")
+		if host == "" {
+			host = "0.0.0.0"
+		}
+		port := viper.GetInt("port")
+		addr := fmt.Sprintf("%s:%d", host, port)
+
+		tokenPath, err := auth.GetDefaultTokenPath()
+		if err == nil {
+			token, err := auth.LoadOrCreateToken(tokenPath)
+			if err == nil {
+				printStartupBanner(addr, token)
+			}
+		}
+
+		if wasRunning {
+			fmt.Println("Server restarted successfully")
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(serverCmd)
 	serverCmd.AddCommand(serverStatusCmd)
 	serverCmd.AddCommand(serverTokenCmd)
 	serverCmd.AddCommand(serverStartCmd)
 	serverCmd.AddCommand(serverStopCmd)
+	serverCmd.AddCommand(serverRestartCmd)
 	serverCmd.AddCommand(serverInstallCmd)
 }
