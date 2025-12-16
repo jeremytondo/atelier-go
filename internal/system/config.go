@@ -46,4 +46,12 @@ func LoadConfig(configName string) {
 			fmt.Fprintf(os.Stderr, "Warning: failed to read config file: %v\n", err)
 		}
 	}
+
+	// 4. Read Local Override Config (e.g. client.local.toml)
+	viper.SetConfigName(configName + ".local")
+	if err := viper.MergeInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read local config file: %v\n", err)
+		}
+	}
 }

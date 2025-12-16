@@ -1,105 +1,82 @@
 # Atelier Go
 
+Atelier Go is a CLI tool that streamlines development on remote machines by bridging the gap between your local terminal's native UI and your remote workflows. It acts as a session manager and launcher, allowing you to quickly jump into `shpool` sessions or projects on a remote server directly from your local terminal.
+
+## Table of Contents
+
+- [About](#about)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+  - [File Locations](#file-locations)
+  - [Local Overrides](#local-overrides)
+  - [Client Options](#client-options)
+  - [Server Options](#server-options)
+- [Usage](#usage)
+  - [Client](#client)
+  - [Server](#server)
+- [Installation Details](#installation-details)
+
 ## About
 
-Atelier Go is a CLI tool that helps streamline development in the terminal, especially when you're working on remote machines.
+I was inspired by the [Ghostty](https://ghostty.org/) terminal's dedication to native UI. The way they integrate with the OS—windows, tabs, splits—just feels right. However, this "native" feeling often breaks down when working on remote machines. You usually end up relying on multiplexers like Tmux or Zellij to manage sessions, which creates a layer of separation from your terminal's native features.
 
-I was inspired by the Ghostty terminals dedication to native UI. The way they integrate with the native UI—windows, tabs, splits—just feels right. It's hard to put into words, but it makes everything feel cohesive with the rest of the operating system.
-
-The problem is, that "native" feeling often breaks down when you're doing most of your development on remote workstations, which is my usual setup. Those native terminal features become less useful because every time you open a new window or tab, you have to SSH back into your remote machine and get your development environment set up again. Tools like Tmux or Zellij are the standard solution here, and I actually like them a lot. But I really wanted something that let me keep using those nice native UI features of Ghostty.
-
-That's where Atelier Go comes in. The idea is pretty simple: it's a launcher and session manager. It lets you quickly jump into specific locations, projects, or active sessions on your remote workstation directly from a new local terminal window, tab, or split. This makes it much more practical to use your terminal's native UI features, rather than relying solely on a multiplexer like Tmux.
-
-Right now, the main challenge is that it's still a two-step process: open a window, tab or split then launch your remote session. Atelier Go makes that second step much faster, but it's still a distinct action. Ideally, I'd love to see custom keybinds in Ghostty that would allow chained actions. This would allow you to open a window and then run a custom script to setup the environment all in one go. That would get us really close to a Tmux-like workflow, but with all the benefits of native UI.
+**Atelier Go** solves this by acting as a bridge. It runs a daemon on your remote machine and a client on your local machine. The client presents an interactive, fuzzy-searchable list of your remote sessions, projects, and frequent directories. Selecting one instantly launches or attaches to a session in your current terminal window. This allows you to use your terminal's native tabs and windows to manage remote workspaces instead of a nested multiplexer.
 
 ## Quick Start
 
-Here’s how to get Atelier Go up and running quickly:
+1.  **Download:** Grab the latest release for your OS from the [GitHub Releases page](https://github.com/jeremytondo/atelier-go/releases).
+2.  **Install:** Ensure the binary is in your `PATH` on both your **local** (client) and **remote** (server) machines.
+3.  **Start Server (Remote):**
+    ```bash
+    atelier-go server start
+    ```
+    *Note the token displayed in the output.*
 
-**Download the binary:**
+4.  **Connect (Local):**
+    ```bash
+    atelier-go client login <token>
+    ```
 
-Grab the latest release for your operating system from the [GitHub Releases page](https://github.com/jeremytondo/atelier-go/releases).
+5.  **Launch:**
+    ```bash
+    atelier-go client
+    ```
 
-**Install**
+## Configuration
 
-You'll need to add this to a location that's included in your path on both the client and server machines.
+Atelier Go uses TOML files for configuration.
 
-**Verify installation:**
+### File Locations
 
-Open a new terminal and run:
-```bash
-atelier-go --version
-```
-You should see the version number printed.
+Configuration files are stored in `~/.config/atelier-go/` (or `$XDG_CONFIG_HOME/atelier-go/`).
 
-**Start the server:**
+- **Client:** `~/.config/atelier-go/client.toml`
+- **Server:** `~/.config/atelier-go/server.toml`
 
-On the server:
-```bash
-atelier-go server start
-```
+### Local Overrides
 
-> [!NOTE]
-> When the server starts it will create and display a token. You'll need this to connect the client.
+You can create "local" configuration files to override settings without changing the main config file. This is useful for machine-specific settings (like a different host or port) that you don't want to sync across dotfiles.
 
-**Connect the client**
+- **Client Override:** `~/.config/atelier-go/client.local.toml`
+- **Server Override:** `~/.config/atelier-go/server.local.toml`
 
-On the client machine, run:
-```bash
-atelier-go client login <token>
-```
+Values in the `.local.toml` file will take precedence over the base `.toml` file.
 
-**Start using Atelier Go**
+### Client Options
 
-```bash
-atelier-go client
-```
-
-Refer to the Documentation section for detailed usage.
-
-## Documentation
-
-Atelier Go is a unified tool for managing remote development environments.
-
-It consists of two parts:
-1. A Server that runs on your development machine/host.
-2. A Client that you run to connect, manage, and attach to sessions.
-
-It integrates with 'shpool' for persistent sessions and 'zoxide' for smart path navigation.
-
-### Global Flags
-
-*   `-h, --help`: help for atelier-go
-*   `--host string`: Host to connect to (client) or bind to (server)
-*   `--port int`: Port to connect to or listen on (default 9001)
-*   `-v, --version`: Print the version number
-
-### Commands
-
-#### `atelier-go client`
-
-The client command connects to the running Atelier server.
-
-It presents an interactive list of:
-- Active 'shpool' sessions
-- Defined projects
-- Frequent directories (via zoxide)
-
-**Interactive Mode:**
-Once inside the interactive list, you can use keyboard shortcuts to switch filters dynamically:
-
-*   **Ctrl-S**: Active Sessions
-*   **Ctrl-P**: Projects
-*   **Ctrl-F**: Frequent Directories (Zoxide)
-*   **Ctrl-A**: All Directories (fd)
-
-**Configuration:**
-You can configure the default filter and custom keybindings in `~/.config/atelier-go/client.toml`:
+**`~/.config/atelier-go/client.toml`**
 
 ```toml
-# Set the default filter (sessions, projects, frequent, all)
+# The remote host to connect to (default: localhost)
+host = "my-dev-server.com"
+
+# The port the server is listening on (default: 9001)
+port = 9001
+
+# Default filter view: "sessions", "projects", "frequent", or "all"
 default-filter = "projects"
 
+# Custom keybindings for the interactive selector
 [keys]
 sessions = "ctrl-s"
 projects = "ctrl-p"
@@ -107,181 +84,62 @@ frequent = "ctrl-f"
 all = "ctrl-a"
 ```
 
-**Usage:**
-```
-atelier-go client [flags]
-atelier-go client [command]
-```
+### Server Options
 
-**Examples:**
-```bash
-# Default: Show sessions, projects, and frequent paths
-atelier-go client
+**`~/.config/atelier-go/server.toml`**
 
-# Show only active sessions
-atelier-go client --sessions
+```toml
+# Address to bind to (default: 0.0.0.0)
+host = "0.0.0.0"
 
-# Show only projects
-atelier-go client --projects
+# Port to listen on (default: 9001)
+port = 9001
 
-# Show frequent directories (default fallback)
-atelier-go client --frequent
+# Define custom actions available when creating a new session
+[[actions]]
+name = "Edit (Neovim)"
+command = "nvim"
 
-# Show ALL directories (can be slow)
-atelier-go client --all
+[[actions]]
+name = "Shell"
+command = "$SHELL -l"
 ```
 
-**Flags:**
-*   `-a, --all`: Show all directories in home
-*   `-f, --frequent`: Show frequent directories (zoxide)
-*   `-h, --help`: help for client
-*   `-p, --projects`: Show projects only
-*   `-s, --sessions`: Show open sessions only
+## Usage
 
-##### `atelier-go client login`
+### Client
 
-Save the authentication token
+The client is your main interface. Running `atelier-go client` opens an interactive `fzf` window.
 
-**Usage:**
-```
-atelier-go client login [token] [flags]
-```
+**Interactive Controls:**
+- **Enter:** Select item (attach to session or start new one).
+- **Ctrl-S:** Switch to **Active Sessions**.
+- **Ctrl-P:** Switch to **Projects**.
+- **Ctrl-F:** Switch to **Frequent Directories** (zoxide).
+- **Ctrl-A:** Switch to **All Directories**.
 
-**Flags:**
-*   `-h, --help`: help for login
+**CLI Flags:**
+- `atelier-go client --sessions` (Start directly in Sessions view)
+- `atelier-go client --projects` (Start directly in Projects view)
+- `atelier-go client --all` (List all directories)
 
-#### `atelier-go completion`
+### Server
 
-Generate the autocompletion script for the specified shell.
+The server runs as a background daemon on your remote machine.
 
-#### `atelier-go server`
+- **Start:** `atelier-go server start` (Runs in background)
+- **Stop:** `atelier-go server stop`
+- **Status:** `atelier-go server status`
+- **Restart:** `atelier-go server restart`
+- **Token:** `atelier-go server token` (Show current auth token)
 
-Starts the Atelier server process in the current terminal window.
-This is useful for debugging or running in a container.
-For normal usage, consider using 'server start' to run in the background.
+## Installation Details
 
-**Usage:**
-```
-atelier-go server [flags]
-atelier-go server [command]
-```
+### Systemd Integration (Linux)
 
-**Examples:**
-```bash
-atelier-go server --port 9005
-```
+You can install the server as a systemd user service so it starts automatically on boot/login.
 
-**Flags:**
-*   `-h, --help`: help for server
-
-##### `atelier-go server install`
-
-Generates a systemd user service file and installs it.
-This allows the Atelier server to start automatically when you log in.
-Files are installed to ~/.local/share/systemd/user/.
-
-**Usage:**
-```
-atelier-go server install [flags]
-```
-
-**Examples:**
 ```bash
 atelier-go server install
 ```
-
-**Flags:**
-*   `-h, --help`: help for install
-
-##### `atelier-go server start`
-
-Starts the Atelier server as a detached background process.
-It writes a PID file to ensure only one instance runs at a time.
-Use 'server stop' to shut it down.
-
-**Usage:**
-```
-atelier-go server start [flags]
-```
-
-**Examples:**
-```bash
-atelier-go server start
-```
-
-**Flags:**
-*   `-h, --help`: help for start
-
-##### `atelier-go server status`
-
-Sends a health check request to the running server.
-Verifies that the server process is running and responding to HTTP requests.
-
-**Usage:**
-```
-atelier-go server status [flags]
-```
-
-**Examples:**
-```bash
-atelier-go server status
-```
-
-**Flags:**
-*   `-h, --help`: help for status
-
-##### `atelier-go server stop`
-
-Stops the currently running background server instance
-identified by the PID file.
-
-**Usage:**
-```
-atelier-go server stop [flags]
-```
-
-**Examples:**
-```bash
-atelier-go server stop
-```
-
-**Flags:**
-*   `-h, --help`: help for stop
-
-##### `atelier-go server restart`
-
-Restarts the Atelier server. If the server is managed by systemd,
-it will use systemctl to restart. Otherwise, it will stop and start
-the background process using PID file management.
-
-**Usage:**
-```
-atelier-go server restart [flags]
-```
-
-**Examples:**
-```bash
-atelier-go server restart
-```
-
-**Flags:**
-*   `-h, --help`: help for restart
-
-##### `atelier-go server token`
-
-Retrieves and prints the current authentication token.
-This is useful if you need to manually configure a client or script
-authentication.
-
-**Usage:**
-```
-atelier-go server token [flags]
-```
-
-**Examples:**
-```bash
-atelier-go server token
-```
-
-**Flags:**
-*   `-h, --help`: help for token
+This will create and enable a service file in `~/.local/share/systemd/user/`.
