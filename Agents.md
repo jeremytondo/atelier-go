@@ -54,3 +54,4 @@ When initiating a new session in a target directory, the user can choose from th
 ## Agent Behavior
 
 - NEVER commit anything to git.
+- DO NOT write tests.

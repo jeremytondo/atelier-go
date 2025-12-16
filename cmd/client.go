@@ -81,6 +81,7 @@ func init() {
 	clientCmd.Flags().BoolP("projects", "p", false, "Show projects only")
 	clientCmd.Flags().BoolP("frequent", "f", false, "Show frequent directories (zoxide)")
 	clientCmd.Flags().Bool("list", false, "Output raw list for fzf (internal use)")
+	clientCmd.AddCommand(clientLoginCmd)
 	rootCmd.AddCommand(clientCmd)
 }
 
