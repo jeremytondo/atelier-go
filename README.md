@@ -248,6 +248,25 @@ atelier-go server stop
 **Flags:**
 *   `-h, --help`: help for stop
 
+##### `atelier-go server restart`
+
+Restarts the Atelier server. If the server is managed by systemd,
+it will use systemctl to restart. Otherwise, it will stop and start
+the background process using PID file management.
+
+**Usage:**
+```
+atelier-go server restart [flags]
+```
+
+**Examples:**
+```bash
+atelier-go server restart
+```
+
+**Flags:**
+*   `-h, --help`: help for restart
+
 ##### `atelier-go server token`
 
 Retrieves and prints the current authentication token.
