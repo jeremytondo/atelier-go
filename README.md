@@ -11,6 +11,7 @@ Atelier Go is a CLI tool that streamlines development on remote machines by brid
   - [Local Overrides](#local-overrides)
   - [Client Options](#client-options)
   - [Server Options](#server-options)
+  - [Projects](#projects)
 - [Usage](#usage)
   - [Client](#client)
   - [Server](#server)
@@ -104,6 +105,29 @@ command = "nvim"
 name = "Shell"
 command = "$SHELL -l"
 ```
+
+### Projects
+
+You can define projects by creating TOML files in the `~/.config/atelier-go/projects/` directory. Each file represents a separate project.
+
+**Example: `~/.config/atelier-go/projects/my-app.toml`**
+
+```toml
+name = "My Application"
+location = "~/dev/my-app"
+
+[[actions]]
+name = "Run Server"
+command = "npm start"
+
+[[actions]]
+name = "Run Tests"
+command = "npm test"
+```
+
+*   **`name`**: The display name of the project shown in the client.
+*   **`location`**: The absolute path to the project directory (supports `~` expansion).
+*   **`actions`**: A list of custom commands available for this project.
 
 ## Usage
 
