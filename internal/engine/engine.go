@@ -10,9 +10,10 @@ import (
 
 // Item represents a unified project or directory entry.
 type Item struct {
-	Name   string
-	Path   string
-	Source string // "Project" or "Zoxide"
+	Name    string
+	Path    string
+	Source  string // "Project" or "Zoxide"
+	Actions []config.Action
 }
 
 // Fetch retrieves items from configuration and zoxide, merging and deduplicating them.
@@ -45,9 +46,10 @@ func Fetch() ([]Item, error) {
 		cleanPath := filepath.Clean(proj.Path)
 
 		items = append(items, Item{
-			Name:   proj.Name,
-			Path:   cleanPath,
-			Source: "Project",
+			Name:    proj.Name,
+			Path:    cleanPath,
+			Source:  "Project",
+			Actions: proj.Actions,
 		})
 		seenPaths[cleanPath] = true
 	}

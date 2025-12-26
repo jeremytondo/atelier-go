@@ -10,8 +10,15 @@ import (
 
 // Project represents a defined project with a name and a filesystem path.
 type Project struct {
-	Name string `mapstructure:"name"`
-	Path string `mapstructure:"path"`
+	Name    string   `mapstructure:"name"`
+	Path    string   `mapstructure:"path"`
+	Actions []Action `mapstructure:"actions"`
+}
+
+// Action represents a runnable command associated with a project.
+type Action struct {
+	Name    string `mapstructure:"name"`
+	Command string `mapstructure:"command"`
 }
 
 // Config represents the application configuration structure.

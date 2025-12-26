@@ -9,8 +9,16 @@ import (
 )
 
 // Select opens fzf with the provided items and returns the selected item.
-func Select(items []string) (string, error) {
-	cmd := exec.Command("fzf", "--ansi", "--no-sort", "--layout=reverse")
+func Select(items []string, header string, prompt string) (string, error) {
+	args := []string{"--ansi", "--no-sort", "--layout=reverse"}
+	if header != "" {
+		args = append(args, fmt.Sprintf("--header=%s", header))
+	}
+	if prompt != "" {
+		args = append(args, fmt.Sprintf("--prompt=%s", prompt))
+	}
+
+	cmd := exec.Command("fzf", args...)
 	cmd.Stderr = os.Stderr
 
 	// Pipe items to stdin
