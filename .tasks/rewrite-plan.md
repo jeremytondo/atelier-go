@@ -17,10 +17,10 @@
 
 ### Step 2: System Adapters (The "Hands")
 **Goal**: Implement wrappers for external tools (`zoxide`, `zmx`).
-- [ ] **Action 2.1**: Create `internal/zoxide/zoxide.go`.
+- [x] **Action 2.1**: Create `internal/zoxide/zoxide.go`.
     - Implement `Query() ([]string, error)` that runs `zoxide query -l`.
     - Parse output into a string slice.
-- [ ] **Action 2.2**: Create `internal/zmx/session.go`.
+- [x] **Action 2.2**: Create `internal/zmx/session.go`.
     - Implement `Attach(name string, dir string) error`.
     - Use `exec.Command("zmx", "attach", "-c", name)`.
     - **Crucial**: Connect `os.Stdin`, `os.Stdout`, `os.Stderr`.
