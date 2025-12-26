@@ -19,15 +19,22 @@ type Config struct {
 	Projects []Project `mapstructure:"projects"`
 }
 
-// Load reads the configuration from ~/.config/atelier/config.toml.
+// Load reads the configuration from the XDG config directory.
+// It looks in $XDG_CONFIG_HOME/atelier-go/config.toml, defaulting to ~/.config/atelier-go/config.toml.
 // If the configuration file is missing, it returns an empty Config without error.
 func Load() (*Config, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
-	}
+	var configDir string
+	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
 
-	configDir := filepath.Join(home, ".config", "atelier")
+	if xdgConfigHome != "" {
+		configDir = filepath.Join(xdgConfigHome, "atelier-go")
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		configDir = filepath.Join(home, ".config", "atelier-go")
+	}
 
 	v := viper.New()
 	v.AddConfigPath(configDir)

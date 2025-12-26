@@ -35,16 +35,26 @@
 
 ### Step 4: UI & CLI (The Interface)
 **Goal**: The user-facing command-line interface.
-- [ ] **Action 4.1**: Create `internal/ui/fzf.go`.
+- [x] **Action 4.1**: Create `internal/ui/fzf.go`.
     - Implement `Select(items []string) (string, error)`.
     - Use `exec.Command("fzf", ...)` with piped input/output.
     - Keep it simple for Phase 1 (no complex bindings yet).
-- [ ] **Action 4.2**: Create `cmd/atelier/main.go` & `cmd/atelier/root.go`.
+- [x] **Action 4.2**: Create `cmd/atelier-go/main.go` & `cmd/atelier-go/root.go`.
     - Initialize the `rootCmd` using Cobra.
     - Wire up the "Run" logic:
         1. `engine.Fetch()`
         2. Format for `ui.Select()` (e.g., `[Project] Name  /path/to/dir`)
         3. Parse selection.
         4. `zmx.Attach()`.
-- [ ] **Action 4.3**: Create `cmd/atelier/debug.go`.
-    - Add a hidden `debug` command to print the raw list from `engine.Fetch()` without `fzf`, useful for verification.
+- [x] **Action 4.3**: Create `cmd/atelier-go/list.go`.
+    - Implemented `list` command (replaced `debug`).
+    - Lists all available projects and directories.
+    - Supports filtering via flags (`--projects`, `--zoxide`).
+
+## Phase 1 Complete!
+All steps for the local-first rewrite have been implemented and verified.
+- Core configuration loading.
+- Zoxide and Zmx integration.
+- Data engine aggregation.
+- UI selection with fzf.
+- CLI with `list` command.

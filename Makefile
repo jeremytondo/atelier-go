@@ -28,7 +28,7 @@ help: ## Show this help message
 
 build: ## Build the binary into bin/
 	@mkdir -p bin
-	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) ./main.go
+	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) ./cmd/atelier-go
 
 test: ## Run tests
 	$(GOTEST) -v ./...
@@ -39,8 +39,6 @@ clean: ## Remove build artifacts
 	rm -rf dist/
 	rm -f atelier-go
 
-run-server: build ## Run the server locally
-	./$(BINARY_NAME) server
+run: build ## Run the application
+	./$(BINARY_NAME)
 
-run-client: build ## Run the client locally
-	./$(BINARY_NAME) client
