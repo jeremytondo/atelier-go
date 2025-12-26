@@ -28,7 +28,7 @@
 
 ### Step 3: The Data Engine (The "Brain")
 **Goal**: Aggregation logic that merges config and zoxide data.
-- [ ] **Action 3.1**: Create `internal/engine/engine.go`.
+- [x] **Action 3.1**: Create `internal/engine/engine.go`.
     - Define `Item` struct (`Name`, `Path`, `Source` [Project|Zoxide]).
     - Implement `Fetch() ([]Item, error)`.
     - Logic: Load Config + Query Zoxide -> Merge -> Deduplicate (Config wins) -> Return.
