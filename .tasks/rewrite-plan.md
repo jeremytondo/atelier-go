@@ -10,7 +10,7 @@
 
 ### Step 1: Configuration & Domain
 **Goal**: Define the data structures and load the "Source of Truth" (Config).
-- [ ] **Action 1.1**: Create `internal/config/config.go`.
+- [x] **Action 1.1**: Create `internal/config/config.go`.
     - Define `Project` struct (`Name`, `Path`).
     - Implement `Load(path string) (*Config, error)` using `viper` (or stdlib if preferred) to parse `~/.config/atelier/config.toml`.
     - Handle missing config gracefully (return empty config).
