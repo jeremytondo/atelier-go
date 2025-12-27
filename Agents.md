@@ -1,55 +1,59 @@
 # Agents & Components
 
-This document describes the architecture and components (Agents) of the `atelier-go` system, which replaces the previous Bash-based implementation with a unified Go application.
+This document describes the architecture and components of the `atelier-go` system.
 
-## Core System Agents
+## Core System Architecture
 
-The system is built as a single Go binary (`atelier-go`) that operates in two primary modes:
+The system is built as a unified Go binary (`atelier-go`) that operates as a local-first interactive CLI. It replaces the previous Bash-based implementation and the legacy Client/Server model.
 
-### 1. The Daemon (Server)
+### The CLI Agent (`atelier-go`)
 
-**Command:** `atelier-go server`
-
-The Daemon is the central agent running on the host machine (where your code lives).
+The main entry point for the user.
 
 - **Responsibilities:**
-  - Runs as a background service (default port: `9001`).
-  - Exposes a secure HTTP API protected by Bearer tokens.
-  - Aggregates state from system integrations (`shpool` sessions, `zoxide` paths).
-  - Handles health checks and authentication.
+  - Aggregates projects from static configuration and dynamic `zoxide` history.
+  - Provides a two-step interactive workflow using `fzf`:
+    1.  **Project Selection**: Filter and select a target workspace.
+    2.  **Action Selection**: (Optional) Choose a specific task to run (e.g., "Run Server", "Test").
+  - Manages session lifecycle via `zmx` (a wrapper around `shpool`).
 
-### 2. The Client
+## Workflow
 
-**Command:** `atelier-go client`
+1.  **Launch**: User runs `atelier-go`.
+2.  **Select**: The agent displays a fuzzy-searchable list of projects.
+3.  **Act**:
+    - If specific **Actions** are defined for the project, the user is prompted to select one (or default to "Shell").
+    - If no actions are defined, it defaults to a standard shell session.
+4.  **Attach**: The agent connects to a persistent session in the target directory, executing the selected command if provided.
 
-The Client is the user-facing agent that facilitates connection and workflow management.
+## Configuration
 
-- **Responsibilities:**
-  - Connects to the Daemon via HTTP to fetch active sessions and recent locations.
-  - Provides an interactive, fuzzy-searchable UI using `fzf`.
-  - Manages the SSH connection lifecycle.
-  - Attaches to existing `shpool` sessions or creates new ones based on user selection.
+Configuration is stored in `~/.config/atelier-go/config.toml`.
+
+```toml
+# Example Configuration
+
+[[projects]]
+  name = "atelier-go"
+  path = "/Users/me/Projects/atelier-go"
+
+  [[projects.actions]]
+    name = "Run Server"
+    command = "go run main.go server"
+
+  [[projects.actions]]
+    name = "Test"
+    command = "go test ./..."
+```
 
 ## External Helper Agents
 
 The system orchestrates several external tools to provide robust functionality:
 
 - **shpool:** Handles persistent shell sessions, ensuring work is not lost if the connection drops.
-- **zoxide:** Provides "frecent" (frequent + recent) directory tracking, allowing quick navigation to commonly used project folders.
-- **fzf:** Powers the interactive selection interface for filtering sessions and directories.
-- **ssh:** Provides the secure transport layer for the client to interact with the host environment.
-
-## Workspace Actions
-
-When initiating a new session in a target directory, the user can choose from the following operational modes:
-
-1. **Edit:** Launches `nvim` (Neovim) directly in the target directory.
-2. **Shell:** Launches a standard interactive shell (`bash` or configured `$SHELL`).
-3. **Opencode:** Launches the `opencode` CLI agent in the target directory.
-
-## Configuration Conventions
-
-- **Parameter Naming:** All keys in configuration files (e.g., `client.toml`) MUST use **kebab-case** (e.g., `default-filter`, `log-level`) instead of snake_case or camelCase.
+- **zmx:** An internal package that acts as the bridge to `shpool`.
+- **zoxide:** Provides "frecent" (frequent + recent) directory tracking.
+- **fzf:** Powers the interactive selection interface.
 
 ## Coding Standards
 
