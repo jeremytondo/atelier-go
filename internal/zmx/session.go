@@ -1,3 +1,4 @@
+// Package zmx handles the interaction with the zmx session manager.
 package zmx
 
 import (
@@ -10,15 +11,9 @@ import (
 // It sets the working directory to dir for new sessions.
 // It connects the current process's Stdin, Stdout, and Stderr to the zmx command.
 func Attach(name string, dir string, args ...string) error {
-	// zmx attach <name> [command...]
-	// We omit the command to let zmx default to the user's shell.
 	cmdArgs := []string{"attach", name}
 	if len(args) > 0 {
-		// If command arguments are provided (e.g. "nvim ."), zmx expects them as trailing arguments
-		// However, zmx attach signature is `zmx attach <session_name> [command...]`
-		// Wait, I need to double check if my assumption about zmx attach is correct.
-		// The original code was `exec.Command("zmx", "attach", name)`.
-		// If I add args... it should just be append.
+		// Append any optional command arguments (e.g., "nvim .") for zmx to execute.
 		cmdArgs = append(cmdArgs, args...)
 	}
 

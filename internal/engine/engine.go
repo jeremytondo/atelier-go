@@ -1,3 +1,4 @@
+// Package engine handles the core logic for aggregating projects and session targets.
 package engine
 
 import (

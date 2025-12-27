@@ -1,3 +1,4 @@
+// Package zoxide provides integration with the zoxide directory jumper.
 package zoxide
 
 import (

@@ -51,6 +51,15 @@ When initiating a new session in a target directory, the user can choose from th
 
 - **Parameter Naming:** All keys in configuration files (e.g., `client.toml`) MUST use **kebab-case** (e.g., `default-filter`, `log-level`) instead of snake_case or camelCase.
 
+## Coding Standards
+
+All code MUST adhere to standard Go conventions and pass linting checks.
+
+1.  **Error Strings**: Error messages used with `fmt.Errorf` or `errors.New` must be lowercase and not end with punctuation (e.g., `fmt.Errorf("error reading file: %w", err)`).
+2.  **Comments**: All exported functions, types, and variables must have documentation comments starting with the name of the exported entity.
+3.  **Linting**: Run `go vet ./cmd/... ./internal/...` to verify correctness.
+4.  **Formatting**: All code must be formatted with `gofmt`.
+
 ## Agent Behavior
 
 - NEVER commit anything to git.
