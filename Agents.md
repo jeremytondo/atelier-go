@@ -1,6 +1,6 @@
 # Agents & Components
 
-This document describes the architecture and components of the `atelier-go` system.
+This document describes the architecture and components of the `atelier-go` app.
 
 ## RULES
 * NEVER commit anything to git.
@@ -8,27 +8,42 @@ This document describes the architecture and components of the `atelier-go` syst
 
 ## Core System Architecture
 
-The system is built as a unified Go binary (`atelier-go`) that operates as a local-first interactive CLI. It replaces the previous Bash-based implementation and the legacy Client/Server model.
+The system is built as a local-first interactive CLI, organized in a domain-driven flat structure.
 
 ### The CLI Agent (`atelier-go`)
 
 The main entry point for the user.
 
 - **Responsibilities:**
-  - Aggregates projects from static configuration and dynamic `zoxide` history.
+  - Aggregates locations via the **Location Provider** architecture (Projects, Zoxide).
   - Provides a two-step interactive workflow using `fzf`:
     1.  **Project Selection**: Filter and select a target workspace.
-    2.  **Action Selection**: (Optional) Choose a specific task to run (e.g., "Run Server", "Test").
-  - Manages session lifecycle via `zmx` (a wrapper around `shpool`).
+    2.  **Action Selection**: (Optional) Choose a specific task to run.
+  - Manages session lifecycle via `sessions` (wrapping `zmx`/`shpool`).
+
+### Server Agent (`atelier-go-server`)
+- Stubbed for future remote agent capabilities.
+
+## Codebase Structure
+
+The project follows a standard Go CLI layout with a flat internal structure:
+
+- **`cmd/`**: Binary entry points (`atelier-go`, `atelier-go-server`).
+- **`internal/`**:
+  - **`cli/`**: Cobra command definitions.
+  - **`config/`**: Configuration loading and structs.
+  - **`locations/`**: Location discovery via Providers (`Provider` interface, `Manager`).
+  - **`sessions/`**: Session management (`Manager`, `Session`).
+  - **`ui/`**: Interactive UI logic (`fzf` wrapper, rendering).
+  - **`utils/`**: Shared helpers.
 
 ## Workflow
 
 1.  **Launch**: User runs `atelier-go`.
-2.  **Select**: The agent displays a fuzzy-searchable list of projects.
-3.  **Act**:
-    - If specific **Actions** are defined for the project, the user is prompted to select one (or default to "Shell").
-    - If no actions are defined, it defaults to a standard shell session.
-4.  **Attach**: The agent connects to a persistent session in the target directory, executing the selected command if provided.
+2.  **Discovery**: The `locations` manager queries all providers (Config, Zoxide) in parallel.
+3.  **Select**: The `ui` package displays a merged, fuzzy-searchable list.
+4.  **Act**: User selects a location and optionally an action.
+5.  **Attach**: The `sessions` manager attaches to the persistent session.
 
 ## Configuration
 
@@ -52,18 +67,18 @@ Configuration is stored in `~/.config/atelier-go/config.toml`.
 
 ## External Helper Agents
 
-The system orchestrates several external tools to provide robust functionality:
+The system orchestrates several external tools:
 
-- **shpool:** Handles persistent shell sessions, ensuring work is not lost if the connection drops.
-- **zmx:** An internal package that acts as the bridge to `shpool`.
-- **zoxide:** Provides "frecent" (frequent + recent) directory tracking.
-- **fzf:** Powers the interactive selection interface.
+- **zmx:** Session manager wrapping `shpool`.
+- **zoxide:** Directory jumper (used as a Location Provider).
+- **fzf:** Fuzzy finder for the UI.
 
 ## Coding Standards
 
 All code MUST adhere to standard Go conventions and pass linting checks.
 
-1.  **Error Strings**: Error messages used with `fmt.Errorf` or `errors.New` must be lowercase and not end with punctuation (e.g., `fmt.Errorf("error reading file: %w", err)`).
-2.  **Comments**: All exported functions, types, and variables must have documentation comments starting with the name of the exported entity.
-3.  **Linting**: Run `go vet ./cmd/... ./internal/...` to verify correctness.
-4.  **Formatting**: All code must be formatted with `gofmt`.
+1.  **Package Entry Points**: Each package must have a primary file named after the package (e.g., `locations/locations.go`) containing the core types and constructors.
+2.  **Error Strings**: Error messages used with `fmt.Errorf` or `errors.New` must be lowercase and not end with punctuation.
+3.  **Comments**: All exported entities must be documented. Packages must have package comments.
+4.  **Linting**: Run `go vet ./cmd/... ./internal/...` to verify correctness.
+5.  **Formatting**: All code must be formatted with `gofmt`.
