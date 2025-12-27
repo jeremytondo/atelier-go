@@ -66,5 +66,5 @@ All code MUST adhere to standard Go conventions and pass linting checks.
 
 ## Agent Behavior
 
-- NEVER commit anything to git.
+- **NEVER EVER** commit anything to git. The user will handle all version control operations manually.
 - DO NOT write tests.
