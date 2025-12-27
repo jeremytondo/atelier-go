@@ -26,7 +26,10 @@ var listCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "SOURCE\tNAME\tPATH\tACTIONS")
+		if _, err := fmt.Fprintln(w, "SOURCE\tNAME\tPATH\tACTIONS"); err != nil {
+			fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
+			return
+		}
 
 		for _, item := range items {
 			if listProjectsOnly && item.Source != "Project" {
@@ -42,9 +45,14 @@ var listCmd = &cobra.Command{
 				actionStr = fmt.Sprintf("%d", actionCount)
 			}
 
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", item.Source, item.Name, item.Path, actionStr)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", item.Source, item.Name, item.Path, actionStr); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
+				return
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Fprintf(os.Stderr, "error flushing writer: %v\n", err)
+		}
 	},
 }
 
