@@ -2,6 +2,8 @@
 package sessions
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,11 +45,36 @@ func (m *Manager) Attach(name string, dir string, args ...string) error {
 	return nil
 }
 
-// List returns a list of active sessions (stub implementation as zmx list format is not specified).
-// Assuming 'zmx list' returns "ID\tPath" or similar.
+// List returns a list of active sessions.
+// It assumes 'zmx list' returns output where each line is "ID" or "ID\tPath".
 func (m *Manager) List() ([]Session, error) {
-	// TODO: Implement actual parsing of `zmx list` output if available.
-	return nil, nil
+	cmd := exec.Command("zmx", "list")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sessions: %w", err)
+	}
+
+	var sessions []Session
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "\t", 2)
+		sess := Session{ID: parts[0]}
+		if len(parts) > 1 {
+			sess.Path = parts[1]
+		}
+		sessions = append(sessions, sess)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse session list: %w", err)
+	}
+
+	return sessions, nil
 }
 
 // Kill terminates a session.
