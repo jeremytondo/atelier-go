@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -38,6 +39,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	const (
 		projectColor = "\x1b[38;2;137;180;250m"
+		dimColor     = "\x1b[2m"
 		resetColor   = "\x1b[0m"
 		iconProject  = "\uf503"
 		iconZoxide   = "\uea83"
@@ -49,11 +51,13 @@ func run(cmd *cobra.Command, args []string) {
 			label = fmt.Sprintf("%s%s %s%s", projectColor, iconProject, item.Name, resetColor)
 		} else {
 			// Zoxide entries (default color)
-			label = fmt.Sprintf("%s %s  (%s)", iconZoxide, item.Name, item.Path)
+			shortPath := prettyPath(item.Path)
+			label = fmt.Sprintf("%s %s  %s(%s)%s", iconZoxide, item.Name, dimColor, shortPath, resetColor)
 		}
 
 		choices = append(choices, label)
-		displayMap[label] = item
+		// Use stripped label as key for robustness
+		displayMap[stripANSI(label)] = item
 	}
 
 	// 3. Select Project
@@ -63,10 +67,16 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	item, ok := displayMap[selection]
+	item, ok := displayMap[stripANSI(selection)]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "error: invalid selection\n")
-		os.Exit(1)
+		// Fallback: Try exact match (just in case stripANSI failed or fzf behaved weirdly)
+		if i, okExact := displayMap[selection]; okExact {
+			item = i
+			ok = true
+		} else {
+			fmt.Fprintf(os.Stderr, "error: invalid selection: %q\n", selection)
+			os.Exit(1)
+		}
 	}
 
 	sessionName := zmx.Sanitize(item.Name)
@@ -122,4 +132,21 @@ func run(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "error attaching to session: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func prettyPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if strings.HasPrefix(path, home) {
+		return "~" + strings.TrimPrefix(path, home)
+	}
+	return path
+}
+
+func stripANSI(str string) string {
+	const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+	var re = regexp.MustCompile(ansi)
+	return re.ReplaceAllString(str, "")
 }
