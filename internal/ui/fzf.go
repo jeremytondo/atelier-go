@@ -1,4 +1,3 @@
-// Package ui provides the interactive fuzzy search interface.
 package ui
 
 import (

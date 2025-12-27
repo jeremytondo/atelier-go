@@ -1,5 +1,4 @@
-// Package zmx handles the interaction with the zmx session manager.
-package zmx
+package sessions
 
 import (
 	"fmt"
@@ -9,11 +8,11 @@ import (
 	"strings"
 )
 
-// Manager implements the session.Manager interface for zmx.
+// Manager handles interaction with the zmx session manager.
 type Manager struct{}
 
-// New creates a new zmx session manager.
-func New() *Manager {
+// NewManager creates a new session manager.
+func NewManager() *Manager {
 	return &Manager{}
 }
 
@@ -34,6 +33,22 @@ func (m *Manager) Attach(name string, dir string, args ...string) error {
 		return fmt.Errorf("zmx session ended with error: %w", err)
 	}
 
+	return nil
+}
+
+// List returns a list of active sessions (stub implementation as zmx list format is not specified).
+// Assuming 'zmx list' returns "ID\tPath" or similar.
+func (m *Manager) List() ([]Session, error) {
+	// TODO: Implement actual parsing of `zmx list` output if available.
+	return nil, nil
+}
+
+// Kill terminates a session.
+func (m *Manager) Kill(name string) error {
+	cmd := exec.Command("zmx", "kill", name)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to kill session %s: %w", name, err)
+	}
 	return nil
 }
 
