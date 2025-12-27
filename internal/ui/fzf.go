@@ -11,15 +11,28 @@ import (
 // Select opens fzf with the provided items and returns the selected item and the key pressed.
 // If expects is provided, fzf will print the key pressed as the first line.
 func Select(items []string, header string, prompt string, expects []string) (string, string, error) {
-	args := []string{"--ansi", "--no-sort", "--layout=reverse", "--bind=esc:abort"}
+	// Added --height=40% to match legacy behavior and potentially fix cursor issues.
+	// Switched from --expect to --bind to avoid potential Esc key handling issues.
+	args := []string{
+		"--ansi",
+		"--no-sort",
+		"--layout=reverse",
+		"--height=40%",
+		"--bind=esc:abort",
+	}
+
 	if header != "" {
 		args = append(args, fmt.Sprintf("--header=%s", header))
 	}
 	if prompt != "" {
 		args = append(args, fmt.Sprintf("--prompt=%s", prompt))
 	}
-	if len(expects) > 0 {
-		args = append(args, fmt.Sprintf("--expect=%s", strings.Join(expects, ",")))
+
+	// Map expected keys to bindings that print the key and accept
+	for _, key := range expects {
+		// print(key) writes to stdout (same stream as accept)
+		// We use a null byte as a delimiter to safely separate key and selection
+		args = append(args, fmt.Sprintf("--bind=%s:print(%s)+accept", key, key))
 	}
 
 	cmd := exec.Command("fzf", args...)
@@ -38,21 +51,16 @@ func Select(items []string, header string, prompt string, expects []string) (str
 		return "", "", fmt.Errorf("selection cancelled or failed: %w", err)
 	}
 
-	// Parse output
-	// When --expect is used, fzf outputs:
-	// Line 1: Key pressed (empty if enter)
-	// Line 2: Selected item
-	if len(expects) > 0 {
-		lines := strings.SplitN(string(output), "\n", 2)
-		var key, val string
-		if len(lines) >= 1 {
-			key = strings.TrimSpace(lines[0])
+	outStr := strings.TrimSpace(string(output))
+
+	// Check if any expected key prefixes the output
+	for _, key := range expects {
+		if strings.HasPrefix(outStr, key) {
+			// Found a bound key
+			val := strings.TrimPrefix(outStr, key)
+			return strings.TrimSpace(val), key, nil
 		}
-		if len(lines) >= 2 {
-			val = strings.TrimSpace(lines[1])
-		}
-		return val, key, nil
 	}
 
-	return strings.TrimSpace(string(output)), "", nil
+	return outStr, "", nil
 }
