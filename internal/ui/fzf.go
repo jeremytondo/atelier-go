@@ -11,7 +11,7 @@ import (
 // Select opens fzf with the provided items and returns the selected item and the key pressed.
 // If expects is provided, fzf will print the key pressed as the first line.
 func Select(items []string, header string, prompt string, expects []string) (string, string, error) {
-	args := []string{"--ansi", "--no-sort", "--layout=reverse"}
+	args := []string{"--ansi", "--no-sort", "--layout=reverse", "--bind=esc:abort"}
 	if header != "" {
 		args = append(args, fmt.Sprintf("--header=%s", header))
 	}
