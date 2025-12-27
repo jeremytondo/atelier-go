@@ -13,7 +13,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 
 # Build flags
-LDFLAGS=-ldflags "-s -w -X atelier-go/cmd.version=$(VERSION)"
+LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
 
 .PHONY: all build clean test run help
 
