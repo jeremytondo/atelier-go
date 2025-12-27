@@ -9,13 +9,18 @@ import (
 	"strings"
 )
 
+// Manager implements the session.Manager interface for zmx.
+type Manager struct{}
+
+// New creates a new zmx session manager.
+func New() *Manager {
+	return &Manager{}
+}
+
 // Attach connects to an existing zmx session or creates a new one with the given name.
-// It sets the working directory to dir for new sessions.
-// It connects the current process's Stdin, Stdout, and Stderr to the zmx command.
-func Attach(name string, dir string, args ...string) error {
+func (m *Manager) Attach(name string, dir string, args ...string) error {
 	cmdArgs := []string{"attach", name}
 	if len(args) > 0 {
-		// Append any optional command arguments (e.g., "nvim .") for zmx to execute.
 		cmdArgs = append(cmdArgs, args...)
 	}
 
@@ -33,13 +38,9 @@ func Attach(name string, dir string, args ...string) error {
 }
 
 // Sanitize cleans a string to be used as a session name component.
-// It converts to lowercase and replaces non-alphanumeric characters with dashes.
 func Sanitize(s string) string {
 	s = strings.ToLower(s)
-	// Replace non-alphanumeric characters with dashes
 	reg := regexp.MustCompile(`[^a-z0-9]+`)
 	s = reg.ReplaceAllString(s, "-")
-	// Trim leading/trailing dashes
-	s = strings.Trim(s, "-")
-	return s
+	return strings.Trim(s, "-")
 }

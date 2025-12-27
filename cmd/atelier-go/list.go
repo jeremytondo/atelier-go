@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"atelier-go/internal/engine"
+	"atelier-go/internal/locations"
 )
 
 var (
@@ -19,7 +19,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available projects and directories",
 	Run: func(cmd *cobra.Command, args []string) {
-		items, err := engine.Fetch()
+		items, err := locations.Fetch()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error fetching items: %v\n", err)
 			os.Exit(1)

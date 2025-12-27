@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"atelier-go/internal/engine"
+	"atelier-go/internal/locations"
 	"atelier-go/internal/zmx"
 )
 
@@ -22,14 +22,12 @@ var attachCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
 
-		// 1. Try to resolve target from known items (Config/Zoxide)
-		items, err := engine.Fetch()
+		items, err := locations.Fetch()
 		if err != nil {
-			// Log warning but proceed to try as a raw path
 			fmt.Fprintf(os.Stderr, "warning: could not fetch projects: %v\n", err)
 		}
 
-		var foundItem *engine.Item
+		var foundItem *locations.Item
 
 		for i := range items {
 			if items[i].Name == target || items[i].Path == target {
@@ -51,11 +49,8 @@ var attachCmd = &cobra.Command{
 				name = fmt.Sprintf("%s:%s", name, zmx.Sanitize(act.Name))
 				commandArgs = strings.Fields(act.Command)
 			}
-			// If > 1 actions, we default to shell (name is already set to sanitized project name)
-			// effectively behaving like "Default Shell" unless we add support for specifying action.
-
 		} else {
-			// 2. If not found, treat as a direct path
+			// Resolve as direct path
 			absPath, err := filepath.Abs(target)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error resolving path '%s': %v\n", target, err)
@@ -65,9 +60,9 @@ var attachCmd = &cobra.Command{
 			name = zmx.Sanitize(filepath.Base(absPath))
 		}
 
-		// 3. Attach
+		manager := zmx.New()
 		fmt.Printf("Attaching to session '%s' in %s\n", name, path)
-		if err := zmx.Attach(name, path, commandArgs...); err != nil {
+		if err := manager.Attach(name, path, commandArgs...); err != nil {
 			fmt.Fprintf(os.Stderr, "error attaching to session: %v\n", err)
 			os.Exit(1)
 		}
