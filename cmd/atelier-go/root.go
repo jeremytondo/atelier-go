@@ -36,16 +36,27 @@ func run(cmd *cobra.Command, args []string) {
 	displayMap := make(map[string]engine.Item)
 	var choices []string
 
+	const (
+		projectColor = "\x1b[38;2;137;180;250m"
+		resetColor   = "\x1b[0m"
+	)
+
 	for _, item := range items {
 		// align columns if possible, but for now simple format
 		// [Source] Name (Path)
-		label := fmt.Sprintf("[%s] %s  (%s)", item.Source, item.Name, item.Path)
-		choices = append(choices, label)
-		displayMap[label] = item
+		cleanLabel := fmt.Sprintf("[%s] %s  (%s)", item.Source, item.Name, item.Path)
+		displayLabel := cleanLabel
+
+		if item.Source == "Project" {
+			displayLabel = fmt.Sprintf("%s%s%s", projectColor, cleanLabel, resetColor)
+		}
+
+		choices = append(choices, displayLabel)
+		displayMap[cleanLabel] = item
 	}
 
-	// 3. Select
-	selection, err := ui.Select(choices, "Select Project", "Project ➜ ")
+	// 3. Select Project
+	selection, key, err := ui.Select(choices, "Select Project (Alt-s for Shell)", "Project ➜ ", []string{"alt-s"})
 	if err != nil {
 		// If cancelled or empty, just exit quietly
 		return
@@ -57,36 +68,56 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// 4. Select Action
+	sessionName := zmx.Sanitize(item.Name)
 	var commandArgs []string
+	forceShell := key == "alt-s"
 
-	if len(item.Actions) > 0 {
-		actionMap := make(map[string]string)
-		var actionChoices []string
+	// 4. Select Action (if applicable)
+	if !forceShell && len(item.Actions) > 0 {
+		if len(item.Actions) == 1 {
+			// Auto-attach to the single configured action
+			act := item.Actions[0]
+			sessionName = fmt.Sprintf("%s:%s", zmx.Sanitize(item.Name), zmx.Sanitize(act.Name))
+			commandArgs = strings.Fields(act.Command)
+		} else {
+			// Multiple actions: Show menu
+			type actEntry struct {
+				cmd  string
+				name string // sanitized action suffix
+			}
+			actionMap := make(map[string]actEntry)
+			var actionChoices []string
 
-		// Add default Shell option
-		shellLabel := "Shell (Default)"
-		actionChoices = append(actionChoices, shellLabel)
-		actionMap[shellLabel] = ""
+			// Add Shell option
+			shellLabel := "Shell (Default)"
+			actionChoices = append(actionChoices, shellLabel)
+			actionMap[shellLabel] = actEntry{cmd: "", name: ""}
 
-		for _, act := range item.Actions {
-			label := fmt.Sprintf("%s (%s)", act.Name, act.Command)
-			actionChoices = append(actionChoices, label)
-			actionMap[label] = act.Command
-		}
+			for _, act := range item.Actions {
+				label := fmt.Sprintf("%s (%s)", act.Name, act.Command)
+				actionChoices = append(actionChoices, label)
+				actionMap[label] = actEntry{cmd: act.Command, name: zmx.Sanitize(act.Name)}
+			}
 
-		actSelection, err := ui.Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ")
-		if err != nil {
-			return
-		}
+			actSelection, _, err := ui.Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ", nil)
+			if err != nil {
+				return
+			}
 
-		if cmdStr, ok := actionMap[actSelection]; ok && cmdStr != "" {
-			commandArgs = strings.Fields(cmdStr)
+			if entry, ok := actionMap[actSelection]; ok {
+				if entry.name != "" {
+					sessionName = fmt.Sprintf("%s:%s", zmx.Sanitize(item.Name), entry.name)
+				}
+				if entry.cmd != "" {
+					commandArgs = strings.Fields(entry.cmd)
+				}
+			}
 		}
 	}
 
 	// 5. Attach
-	if err := zmx.Attach(item.Name, item.Path, commandArgs...); err != nil {
+	fmt.Printf("Attaching to session '%s' in %s\n", sessionName, item.Path)
+	if err := zmx.Attach(sessionName, item.Path, commandArgs...); err != nil {
 		fmt.Fprintf(os.Stderr, "error attaching to session: %v\n", err)
 		os.Exit(1)
 	}
