@@ -72,7 +72,6 @@ func run(cmd *cobra.Command, args []string) {
 		// Fallback: Try exact match (just in case stripANSI failed or fzf behaved weirdly)
 		if i, okExact := displayMap[selection]; okExact {
 			item = i
-			ok = true
 		} else {
 			fmt.Fprintf(os.Stderr, "error: invalid selection: %q\n", selection)
 			os.Exit(1)
@@ -139,8 +138,8 @@ func prettyPath(path string) string {
 	if err != nil {
 		return path
 	}
-	if strings.HasPrefix(path, home) {
-		return "~" + strings.TrimPrefix(path, home)
+	if after, found := strings.CutPrefix(path, home); found {
+		return "~" + after
 	}
 	return path
 }

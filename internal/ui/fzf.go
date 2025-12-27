@@ -51,15 +51,15 @@ func Select(items []string, header string, prompt string, expects []string) (str
 			// Let's rely on line count.
 			// Actually strings.TrimSpace above might remove the newline if key was empty.
 			// Re-reading raw output is safer.
-			raw := string(output)
-			linesRaw := strings.Split(raw, "\n")
+			// raw := string(output)
+			// linesRaw := strings.Split(raw, "\n")
 			// Filter out empty lines at the end usually
-			var validLines []string
-			for _, l := range linesRaw {
-				if l != "" {
-					validLines = append(validLines, l)
-				}
-			}
+			// var validLines []string
+			// for _, l := range linesRaw {
+			// 	if l != "" {
+			// 		validLines = append(validLines, l)
+			// 	}
+			// }
 
 			// If raw output starts with newline, key is empty.
 			key := ""
