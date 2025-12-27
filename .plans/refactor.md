@@ -67,18 +67,31 @@ atelier-go/
 4. **Binary Execution**: Robust `exec.Command` usage with proper Stdin/Out/Err handling.
 
 ## Checklist
-- [ ] Create `internal/utils/paths.go` with `Shorten` function.
-- [ ] Consolidate `internal/config/config.go`.
-- [ ] Implement `internal/locations/` provider architecture.
-- [ ] Move and refactor session logic to `internal/sessions/`.
-- [ ] Implement UI components in `internal/ui/`.
-- [ ] Set up Cobra commands in `internal/cli/`.
-- [ ] Update `cmd/atelier-go/main.go` and create `cmd/atelier-go-server/main.go`.
-- [ ] Verify all legacy code is moved or accounted for in the new structure.
-- [ ] Ensure all code passes `go vet`.
+- [x] Create `internal/utils/paths.go` with `Shorten` function.
+- [x] Consolidate `internal/config/config.go`.
+- [x] Implement `internal/locations/` provider architecture.
+- [x] Move and refactor session logic to `internal/sessions/`.
+- [x] Implement UI components in `internal/ui/`.
+- [x] Set up Cobra commands in `internal/cli/`.
+- [x] Update `cmd/atelier-go/main.go` and create `cmd/atelier-go-server/main.go`.
+- [x] Verify all legacy code is moved or accounted for in the new structure.
+- [x] Ensure all code passes `go vet`.
 
 ## Implementation Notes
 - The `Provider` interface should return a slice of `Location` objects and an error.
 - Deduplication in `manager.go` should prefer `Config` projects over `zoxide` paths if they overlap.
 - `ui.render.go` should handle terminal colors and icons to make the `fzf` list visually appealing.
 - Ensure that the interactive workflow gracefully handles `fzf` being cancelled (non-zero exit code).
+
+## Completion Summary
+**Date:** 2025-12-27
+
+1.  **Directory Structure**: Implemented the new layout with `internal/cli`, `internal/locations` (providers), `internal/sessions`, `internal/ui`, `internal/utils`.
+2.  **Location Providers**: Implemented `Provider` interface, `ProjectProvider`, `ZoxideProvider`, and `Manager` for orchestration.
+3.  **Unified Sessions**: Consolidated session logic into `internal/sessions`.
+4.  **CLI**: Refactored Cobra commands into `internal/cli` with a root command that launches the interactive workflow.
+5.  **UI**: Updated UI logic to support the new `Location` struct and added a `Workflow` for the interactive process.
+6.  **Entry Points**: Updated `cmd/atelier-go/main.go` and created `cmd/atelier-go-server/main.go`.
+
+The code builds successfully (`go build ./cmd/atelier-go`).
+legacy/ folder was left untouched as requested.
