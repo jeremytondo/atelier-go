@@ -39,20 +39,21 @@ func run(cmd *cobra.Command, args []string) {
 	const (
 		projectColor = "\x1b[38;2;137;180;250m"
 		resetColor   = "\x1b[0m"
+		iconProject  = "\uf503"
+		iconZoxide   = "\uea83"
 	)
 
 	for _, item := range items {
-		// align columns if possible, but for now simple format
-		// [Source] Name (Path)
-		cleanLabel := fmt.Sprintf("[%s] %s  (%s)", item.Source, item.Name, item.Path)
-		displayLabel := cleanLabel
-
+		var label string
 		if item.Source == "Project" {
-			displayLabel = fmt.Sprintf("%s%s%s", projectColor, cleanLabel, resetColor)
+			label = fmt.Sprintf("%s%s %s%s", projectColor, iconProject, item.Name, resetColor)
+		} else {
+			// Zoxide entries (default color)
+			label = fmt.Sprintf("%s %s  (%s)", iconZoxide, item.Name, item.Path)
 		}
 
-		choices = append(choices, displayLabel)
-		displayMap[cleanLabel] = item
+		choices = append(choices, label)
+		displayMap[label] = item
 	}
 
 	// 3. Select Project
