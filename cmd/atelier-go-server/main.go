@@ -1,3 +1,4 @@
+// Package main is the server entry point.
 package main
 
 import "fmt"

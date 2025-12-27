@@ -1,3 +1,4 @@
+// Package cli implements the Cobra commands for the application.
 package cli
 
 import (

@@ -1,3 +1,4 @@
+// Package main is the client entry point.
 package main
 
 import (

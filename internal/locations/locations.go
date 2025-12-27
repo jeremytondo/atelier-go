@@ -1,10 +1,20 @@
+// Package locations handles the core logic for aggregating projects and session targets.
 package locations
 
 import (
+	"atelier-go/internal/config"
 	"context"
 	"fmt"
 	"sync"
 )
+
+// Location represents a unified project or directory entry.
+type Location struct {
+	Name    string
+	Path    string
+	Source  string // "Project" or "Zoxide"
+	Actions []config.Action
+}
 
 // Manager orchestrates location providers.
 type Manager struct {

@@ -1,3 +1,4 @@
+// Package sessions handles workspace session management.
 package sessions
 
 import (
@@ -7,6 +8,12 @@ import (
 	"regexp"
 	"strings"
 )
+
+// Session represents a running workspace session.
+type Session struct {
+	ID   string
+	Path string
+}
 
 // Manager handles interaction with the zmx session manager.
 type Manager struct{}

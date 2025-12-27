@@ -2,6 +2,10 @@
 
 This document describes the architecture and components of the `atelier-go` system.
 
+## RULES
+* NEVER commit anything to git.
+* DO NOT write tests.
+
 ## Core System Architecture
 
 The system is built as a unified Go binary (`atelier-go`) that operates as a local-first interactive CLI. It replaces the previous Bash-based implementation and the legacy Client/Server model.
@@ -63,8 +67,3 @@ All code MUST adhere to standard Go conventions and pass linting checks.
 2.  **Comments**: All exported functions, types, and variables must have documentation comments starting with the name of the exported entity.
 3.  **Linting**: Run `go vet ./cmd/... ./internal/...` to verify correctness.
 4.  **Formatting**: All code must be formatted with `gofmt`.
-
-## Agent Behavior
-
-- **NEVER EVER** commit anything to git. The user will handle all version control operations manually.
-- DO NOT write tests.
