@@ -43,8 +43,6 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 			defer wg.Done()
 			locs, err := provider.Fetch(ctx)
 			if err != nil {
-				// We log errors but don't fail completely if one provider fails?
-				// For now, let's just store the error.
 				errors[index] = err
 				return
 			}
@@ -54,11 +52,7 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 
 	wg.Wait()
 
-	// Check for errors, maybe return the first one?
-	// Or maybe just log them and continue with what we have?
-	// The prompt implies we should be robust.
-	// Let's return an error if ALL providers fail, otherwise return partial results?
-	// Actually, simplicity first. If a provider fails, we return the error.
+	// Check for errors from any provider
 	for _, err := range errors {
 		if err != nil {
 			return nil, fmt.Errorf("provider failed: %w", err)

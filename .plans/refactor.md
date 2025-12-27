@@ -12,17 +12,25 @@ atelier-go/
 │   ├── atelier-go/           # Client Entry Point
 │   └── atelier-go-server/    # Server Entry Point (Stub)
 ├── internal/
-│   ├── cli/                  # Cobra Command definitions (root.go, locations.go, sessions.go)
-│   ├── config/               # Config parsing and Project structs
-│   ├── locations/            # Location discovery logic
-│   │   ├── location.go       # Location struct definition
-│   │   ├── provider.go       # Provider interface
-│   │   ├── projects.go       # Project-based provider
-│   │   ├── zoxide.go         # Zoxide-based provider
-│   │   └── manager.go        # Provider orchestration & deduplication
-│   ├── sessions/             # zmx persistence logic (session.go, zmx.go)
-│   ├── ui/                   # interactive fzf wrapper (fzf.go, render.go, workflow.go)
-│   └── utils/                # Shared helpers (paths.go)
+│   ├── cli/
+│   │   ├── cli.go         # Entry: Execute()
+│   │   ├── locations.go
+│   │   └── sessions.go
+│   ├── config/
+│   │   └── config.go      # Already standard
+│   ├── locations/
+│   │   ├── locations.go   # Entry: Location struct, Manager
+│   │   ├── provider.go
+│   │   ├── projects.go
+│   │   └── zoxide.go
+│   ├── sessions/
+│   │   └── sessions.go    # Entry: Session struct, Manager
+│   ├── ui/
+│   │   ├── ui.go          # Entry: RunInteractiveWorkflow()
+│   │   ├── render.go
+│   │   └── fzf.go
+│   └── utils/
+│       └── utils.go       # Entry: ShortenPath()
 └── legacy/                   # Archived reference code
 ```
 
@@ -92,6 +100,7 @@ atelier-go/
 4.  **CLI**: Refactored Cobra commands into `internal/cli` with a root command that launches the interactive workflow.
 5.  **UI**: Updated UI logic to support the new `Location` struct and added a `Workflow` for the interactive process.
 6.  **Entry Points**: Updated `cmd/atelier-go/main.go` and created `cmd/atelier-go-server/main.go`.
+7.  **Standardization**: Standardized package entry points (renamed `root.go` -> `cli.go`, `workflow.go` -> `ui.go`, `paths.go` -> `utils.go`, merged managers) to align with Go idioms.
 
 The code builds successfully (`go build ./cmd/atelier-go`).
 legacy/ folder was left untouched as requested.
