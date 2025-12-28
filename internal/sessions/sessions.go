@@ -5,10 +5,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 )
 
 // Session represents a running workspace session.
@@ -92,4 +94,29 @@ func Sanitize(s string) string {
 	reg := regexp.MustCompile(`[^a-z0-9]+`)
 	s = reg.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
+}
+
+// PrintTable formats and prints the sessions to the provided writer in a table format.
+func (m *Manager) PrintTable(w io.Writer, sessions []Session) error {
+	if len(sessions) == 0 {
+		if _, err := fmt.Fprintln(w, "No active sessions found."); err != nil {
+			return fmt.Errorf("error writing output: %w", err)
+		}
+		return nil
+	}
+
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "ID\tPATH"); err != nil {
+		return fmt.Errorf("error writing header: %w", err)
+	}
+
+	for _, s := range sessions {
+		if _, err := fmt.Fprintf(tw, "%s\t%s\n", s.ID, s.Path); err != nil {
+			return fmt.Errorf("error writing row: %w", err)
+		}
+	}
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("error flushing writer: %w", err)
+	}
+	return nil
 }

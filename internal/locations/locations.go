@@ -5,7 +5,9 @@ import (
 	"atelier-go/internal/config"
 	"context"
 	"fmt"
+	"io"
 	"sync"
+	"text/tabwriter"
 )
 
 // FetchOptions defines criteria for fetching locations.
@@ -35,6 +37,12 @@ func NewManager(providers ...Provider) *Manager {
 // List discovers and returns a merged list of locations based on the provided options.
 // It handles configuration loading and provider initialization internally.
 func List(ctx context.Context, opts FetchOptions) ([]Location, error) {
+	// Default to showing both if neither is specified
+	if !opts.IncludeProjects && !opts.IncludeZoxide {
+		opts.IncludeProjects = true
+		opts.IncludeZoxide = true
+	}
+
 	// 1. Get Config Directory (needed for ProjectProvider)
 	configDir, err := config.GetConfigDir()
 	if err != nil {
@@ -101,4 +109,28 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 	}
 
 	return allLocations, nil
+}
+
+// PrintTable formats and prints the locations to the provided writer in a table format.
+func PrintTable(w io.Writer, locs []Location) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tPATH\tACTIONS"); err != nil {
+		return fmt.Errorf("error writing header: %w", err)
+	}
+
+	for _, loc := range locs {
+		actionCount := len(loc.Actions)
+		actionStr := "-"
+		if actionCount > 0 {
+			actionStr = fmt.Sprintf("%d", actionCount)
+		}
+
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", loc.Source, loc.Name, loc.Path, actionStr); err != nil {
+			return fmt.Errorf("error writing row: %w", err)
+		}
+	}
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("error flushing writer: %w", err)
+	}
+	return nil
 }

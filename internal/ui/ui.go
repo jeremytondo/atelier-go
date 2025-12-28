@@ -24,12 +24,6 @@ func Run(opts Options) error {
 		IncludeZoxide:   opts.ShowZoxide,
 	}
 
-	// Default to showing both if neither is specified
-	if !opts.ShowProjects && !opts.ShowZoxide {
-		fetchOpts.IncludeProjects = true
-		fetchOpts.IncludeZoxide = true
-	}
-
 	locs, err := locations.List(context.Background(), fetchOpts)
 	if err != nil {
 		return fmt.Errorf("failed to fetch locations: %w", err)

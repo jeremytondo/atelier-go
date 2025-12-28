@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 )
@@ -23,38 +22,14 @@ func newLocationsCmd() *cobra.Command {
 				IncludeZoxide:   listZoxideOnly,
 			}
 
-			// Default to showing both if neither is specified
-			if !listProjectsOnly && !listZoxideOnly {
-				opts.IncludeProjects = true
-				opts.IncludeZoxide = true
-			}
-
 			locs, err := locations.List(context.Background(), opts)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error fetching locations: %v\n", err)
 				os.Exit(1)
 			}
 
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			if _, err := fmt.Fprintln(w, "SOURCE\tNAME\tPATH\tACTIONS"); err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
-				return
-			}
-
-			for _, loc := range locs {
-				actionCount := len(loc.Actions)
-				actionStr := "-"
-				if actionCount > 0 {
-					actionStr = fmt.Sprintf("%d", actionCount)
-				}
-
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", loc.Source, loc.Name, loc.Path, actionStr); err != nil {
-					fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
-					return
-				}
-			}
-			if err := w.Flush(); err != nil {
-				fmt.Fprintf(os.Stderr, "error flushing stdout: %v\n", err)
+			if err := locations.PrintTable(os.Stdout, locs); err != nil {
+				fmt.Fprintf(os.Stderr, "error printing locations: %v\n", err)
 			}
 		},
 	}

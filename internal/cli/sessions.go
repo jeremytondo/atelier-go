@@ -4,7 +4,6 @@ import (
 	"atelier-go/internal/sessions"
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 )
@@ -75,24 +74,8 @@ func newSessionsListCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if len(sessList) == 0 {
-				fmt.Println("No active sessions found.")
-				return
-			}
-
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			if _, err := fmt.Fprintln(w, "ID\tPATH"); err != nil {
-				fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
-				return
-			}
-			for _, s := range sessList {
-				if _, err := fmt.Fprintf(w, "%s\t%s\n", s.ID, s.Path); err != nil {
-					fmt.Fprintf(os.Stderr, "error writing to stdout: %v\n", err)
-					return
-				}
-			}
-			if err := w.Flush(); err != nil {
-				fmt.Fprintf(os.Stderr, "error flushing stdout: %v\n", err)
+			if err := manager.PrintTable(os.Stdout, sessList); err != nil {
+				fmt.Fprintf(os.Stderr, "error printing sessions: %v\n", err)
 			}
 		},
 	}
