@@ -128,3 +128,11 @@ Then, if you want to run Atelier Go on the remote host just do this:
 ssh ag
 ```
 
+## Inspiration and Prior Art
+These are the projects that inspired this.
+
+- [Ghostty Terminal](https://github.com/ghostty-org/ghostty): Using this terminal inspired be to come up with a more native workflow.
+- [ZMX](https://github.com/neurosnap/zmx): Used for managing sessions on Mac and Linux.
+- [Shpool](https://github.com/shell-pool/shpool): Another session manager. I used this originally, but switched to ZMX for cross-platform support.
+- [Sesh](https://github.com/joshmedeski/sesh): I've never actually used this, but saw some videos of it and it helped inspire how this works.
+
