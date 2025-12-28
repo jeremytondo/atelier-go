@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
+var Version = "dev"
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute(ctx context.Context) {
@@ -25,7 +25,7 @@ func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "atelier-go",
 		Short:   "A local-first CLI workflow tool",
-		Version: version,
+		Version: Version,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Default behavior: UI handles defaults (showing everything)
 			if err := ui.Run(cmd.Context(), ui.Options{}); err != nil {
