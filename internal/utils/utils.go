@@ -43,3 +43,25 @@ func ExpandPath(path string) (string, error) {
 
 	return expanded, nil
 }
+
+// GetHostname returns the effective hostname for configuration purposes.
+// It prioritizes the ATELIER_HOSTNAME environment variable.
+// If not set, it falls back to the system hostname, taking only the part before the first dot.
+// The result is always lowercased.
+func GetHostname() (string, error) {
+	if h := os.Getenv("ATELIER_HOSTNAME"); h != "" {
+		return strings.ToLower(h), nil
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+
+	// Split by dot and take the first part
+	if i := strings.Index(hostname, "."); i != -1 {
+		hostname = hostname[:i]
+	}
+
+	return strings.ToLower(hostname), nil
+}

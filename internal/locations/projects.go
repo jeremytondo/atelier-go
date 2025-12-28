@@ -37,17 +37,39 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 		}
 	}
 
-	files, err := filepath.Glob(filepath.Join(projectsDir, "*.toml"))
+	// 1. Get Hostname
+	hostname, _ := utils.GetHostname() // Ignore error, just don't load machine specific if fails
+
+	// 2. Identify all relevant files
+	fileMap := make(map[string]string)
+
+	// Global projects
+	globalFiles, err := filepath.Glob(filepath.Join(projectsDir, "*.toml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list project files: %w", err)
 	}
+	for _, f := range globalFiles {
+		fileMap[filepath.Base(f)] = f
+	}
 
+	// Machine-specific projects (override global)
+	if hostname != "" {
+		machineDir := filepath.Join(projectsDir, hostname)
+		machineFiles, err := filepath.Glob(filepath.Join(machineDir, "*.toml"))
+		if err == nil {
+			for _, f := range machineFiles {
+				fileMap[filepath.Base(f)] = f
+			}
+		}
+	}
+
+	// 3. Process files
 	var locations []Location
-	for _, file := range files {
+	for _, file := range fileMap {
 		v := viper.New()
 		v.SetConfigFile(file)
 		if err := v.ReadInConfig(); err != nil {
-			// Skip malformed files, but maybe log it if we had a logger
+			// Skip malformed files
 			continue
 		}
 
