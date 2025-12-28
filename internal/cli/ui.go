@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newUiCmd() *cobra.Command {
+func newUICmd() *cobra.Command {
 	var showProjects bool
 	var showZoxide bool
 
