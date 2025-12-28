@@ -56,6 +56,10 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 			continue
 		}
 
+		if proj.Path == "" {
+			continue
+		}
+
 		// Expand path
 		expandedPath, err := utils.ExpandPath(proj.Path)
 		if err != nil {
