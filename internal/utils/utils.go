@@ -2,6 +2,7 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -49,6 +50,11 @@ func ExpandPath(path string) (string, error) {
 	}
 
 	return expanded, nil
+}
+
+// SetTerminalTitle updates the terminal window title using ANSI escape sequences.
+func SetTerminalTitle(title string) {
+	fmt.Printf("\033]0;%s\007", title)
 }
 
 // GetHostname returns the effective hostname for configuration purposes.

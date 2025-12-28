@@ -30,6 +30,8 @@ func NewManager() *Manager {
 
 // Attach connects to an existing zmx session or creates a new one with the given name.
 func (m *Manager) Attach(name string, dir string, args ...string) error {
+	utils.SetTerminalTitle(name)
+
 	cmdArgs := []string{"attach", name}
 	if len(args) > 0 {
 		cmdArgs = append(cmdArgs, args...)
