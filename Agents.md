@@ -27,20 +27,22 @@ The project follows a standard Go CLI layout with a flat internal structure:
 
 - **`cmd/`**: Binary entry point (`atelier-go`).
 - **`internal/`**:
-  - **`cli/`**: Cobra command definitions.
-  - **`config/`**: Configuration loading and structs.
+  - **`cli/`**: Cobra command definitions and CLI entry points.
+  - **`config/`**: Configuration loading, validation, and schema definitions.
+  - **`env/`**: Environment bootstrapping and remote context management.
   - **`locations/`**: Location discovery via Providers (`Provider` interface, `Manager`).
-  - **`sessions/`**: Session management (`Manager`, `Session`).
-  - **`ui/`**: Interactive UI logic (`fzf` wrapper, rendering).
-  - **`utils/`**: Shared helpers.
+  - **`sessions/`**: Session management via `zmx` (`Manager`, `Session`).
+  - **`ui/`**: Interactive UI logic (`fzf` wrapper, table rendering).
+  - **`utils/`**: Shared helpers (hostname detection, terminal utilities).
 
 ## Workflow
 
 1.  **Launch**: User runs `atelier-go`.
-2.  **Discovery**: The `locations` manager queries all providers (Config, Zoxide) in parallel.
-3.  **Select**: The `ui` package displays a merged, fuzzy-searchable list.
-4.  **Act**: User selects a location and optionally an action.
-5.  **Attach**: The `sessions` manager attaches to the persistent session.
+2.  **Bootstrap**: The `env` package detects if the process needs to be re-executed in a login shell (e.g., in restricted SSH contexts).
+3.  **Discovery**: The `locations` manager queries all providers (Config, Zoxide) in parallel.
+4.  **Select**: The `ui` package displays a merged, fuzzy-searchable list using `fzf`.
+5.  **Act**: User selects a location and optionally an action.
+6.  **Attach**: The `sessions` manager attaches to the persistent session via `zmx`.
 
 ## Configuration
 
