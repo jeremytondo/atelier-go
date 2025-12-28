@@ -17,14 +17,14 @@ type Options struct {
 
 // Run executes the interactive UI.
 // It fetches locations based on options, prompts the user, and attaches to a session.
-func Run(opts Options) error {
+func Run(ctx context.Context, opts Options) error {
 	// 1. Fetch Locations
 	fetchOpts := locations.FetchOptions{
 		IncludeProjects: opts.ShowProjects,
 		IncludeZoxide:   opts.ShowZoxide,
 	}
 
-	locs, err := locations.List(context.Background(), fetchOpts)
+	locs, err := locations.List(ctx, fetchOpts)
 	if err != nil {
 		return fmt.Errorf("failed to fetch locations: %w", err)
 	}

@@ -2,6 +2,7 @@
 package sessions
 
 import (
+	"atelier-go/internal/utils"
 	"bufio"
 	"bytes"
 	"errors"
@@ -11,7 +12,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"text/tabwriter"
 )
 
 // Session represents a running workspace session.
@@ -93,11 +93,12 @@ func (m *Manager) Kill(name string) error {
 	return nil
 }
 
+var sanitizeRegex = regexp.MustCompile(`[^a-z0-9]+`)
+
 // Sanitize cleans a string to be used as a session name component.
 func Sanitize(s string) string {
 	s = strings.ToLower(s)
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	s = reg.ReplaceAllString(s, "-")
+	s = sanitizeRegex.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
 }
 
@@ -110,7 +111,7 @@ func (m *Manager) PrintTable(w io.Writer, sessions []Session) error {
 		return nil
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	tw := utils.NewTableWriter(w)
 	if _, err := fmt.Fprintln(tw, "ID\tPATH"); err != nil {
 		return fmt.Errorf("error writing header: %w", err)
 	}

@@ -21,7 +21,7 @@ func newUICmd() *cobra.Command {
 				ShowProjects: showProjects,
 				ShowZoxide:   showZoxide,
 			}
-			if err := ui.Run(opts); err != nil {
+			if err := ui.Run(cmd.Context(), opts); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}

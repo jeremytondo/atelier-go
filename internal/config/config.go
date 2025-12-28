@@ -2,6 +2,7 @@
 package config
 
 import (
+	"atelier-go/internal/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,11 @@ type Action struct {
 func GetConfigDir() (string, error) {
 	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
 	if xdgConfigHome != "" {
-		return filepath.Join(xdgConfigHome, "atelier-go"), nil
+		expanded, err := utils.ExpandPath(xdgConfigHome)
+		if err != nil {
+			return "", fmt.Errorf("failed to expand XDG_CONFIG_HOME: %w", err)
+		}
+		return filepath.Join(expanded, "atelier-go"), nil
 	}
 
 	home, err := os.UserHomeDir()

@@ -4,9 +4,10 @@ package main
 import (
 	"atelier-go/internal/cli"
 	"atelier-go/internal/env"
+	"context"
 )
 
 func main() {
 	env.Bootstrap()
-	cli.Execute()
+	cli.Execute(context.Background())
 }

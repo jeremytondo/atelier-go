@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -13,8 +14,8 @@ import (
 var version = "dev"
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-func Execute() {
-	if err := newRootCmd().Execute(); err != nil {
+func Execute(ctx context.Context) {
+	if err := newRootCmd().ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -27,7 +28,7 @@ func newRootCmd() *cobra.Command {
 		Version: version,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Default behavior: UI handles defaults (showing everything)
-			if err := ui.Run(ui.Options{}); err != nil {
+			if err := ui.Run(cmd.Context(), ui.Options{}); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}

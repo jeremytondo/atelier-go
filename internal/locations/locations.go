@@ -3,11 +3,11 @@ package locations
 
 import (
 	"atelier-go/internal/config"
+	"atelier-go/internal/utils"
 	"context"
 	"fmt"
 	"io"
 	"sync"
-	"text/tabwriter"
 )
 
 // FetchOptions defines criteria for fetching locations.
@@ -68,7 +68,6 @@ func List(ctx context.Context, opts FetchOptions) ([]Location, error) {
 func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 	var allLocations []Location
 	seenPaths := make(map[string]bool)
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	results := make([][]Location, len(m.providers))
@@ -99,12 +98,10 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 	// Merge results in order
 	for _, locs := range results {
 		for _, loc := range locs {
-			mu.Lock()
 			if !seenPaths[loc.Path] {
 				allLocations = append(allLocations, loc)
 				seenPaths[loc.Path] = true
 			}
-			mu.Unlock()
 		}
 	}
 
@@ -113,7 +110,7 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 
 // PrintTable formats and prints the locations to the provided writer in a table format.
 func PrintTable(w io.Writer, locs []Location) error {
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	tw := utils.NewTableWriter(w)
 	if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tPATH\tACTIONS"); err != nil {
 		return fmt.Errorf("error writing header: %w", err)
 	}

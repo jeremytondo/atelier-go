@@ -2,10 +2,17 @@
 package utils
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 )
+
+// NewTableWriter creates a configured tabwriter for consistent table output.
+func NewTableWriter(w io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+}
 
 // ShortenPath replaces the user's home directory with "~" in the given path.
 // If the path is not within the home directory, it returns the original path.

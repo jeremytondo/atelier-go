@@ -5,7 +5,6 @@ import (
 	"atelier-go/internal/utils"
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/viper"
@@ -29,13 +28,6 @@ func (p *ProjectProvider) Name() string {
 // Fetch returns the list of configured projects as Locations.
 func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 	projectsDir := filepath.Join(p.configDir, "projects")
-
-	// Create directory if it doesn't exist
-	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(projectsDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create projects directory: %w", err)
-		}
-	}
 
 	// 1. Get Hostname
 	hostname, _ := utils.GetHostname() // Ignore error, just don't load machine specific if fails
