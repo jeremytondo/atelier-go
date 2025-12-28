@@ -5,6 +5,7 @@ import (
 	"atelier-go/internal/locations"
 	"atelier-go/internal/sessions"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -75,6 +76,9 @@ func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 
 	selection, key, err := Select(choices, "Select Project (Alt-s for Shell)", "Project ➜ ", []string{"alt-s"})
 	if err != nil {
+		if errors.Is(err, ErrCancelled) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -120,6 +124,9 @@ func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 
 			actSelection, _, err := Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ", nil)
 			if err != nil {
+				if errors.Is(err, ErrCancelled) {
+					return nil, nil
+				}
 				return nil, err
 			}
 

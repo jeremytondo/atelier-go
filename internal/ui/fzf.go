@@ -2,11 +2,14 @@ package ui
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+var ErrCancelled = errors.New("selection cancelled")
 
 // Select opens fzf with the provided items and returns the selected item and the key pressed.
 // If expects is provided, fzf will print the key pressed as the first line.
@@ -47,7 +50,9 @@ func Select(items []string, header string, prompt string, expects []string) (str
 
 	output, err := cmd.Output()
 	if err != nil {
-		// If fzf exits with non-zero (e.g. cancelled), we return an error
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 130 {
+			return "", "", ErrCancelled
+		}
 		return "", "", fmt.Errorf("selection cancelled or failed: %w", err)
 	}
 
