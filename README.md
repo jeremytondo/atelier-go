@@ -100,14 +100,17 @@ atelier-go locations --projects
 
 ## Remote Work
 
-Atelier Go tries to make working on remote machines as easy as working locally.
-This is supported by installing Atelier Go on the remote machine and then running
-it over ssh. There are a few other neat tricks that can be done as well that I learned
-from using [zmx](https://github.com/neurosnap/zmx).
+Atelier Go is designed to make working on remote machines feel native. While you can use `RemoteCommand` in your SSH config, the best way to use it is by setting up a local alias. This allows you to pass flags and commands (like `ag sessions list`) to the remote instance just like you would locally.
 
-Here's an example ssh config:
+### 1. Remote Server Setup
 
-```bash
+Ensure `atelier-go` is installed on your remote machine (e.g., at `~/.local/bin/atelier-go`).
+
+### 2. SSH Configuration
+
+Add a host entry to your local `~/.ssh/config`.
+
+```ssh
 Host ag
   HostName workstation
   User username
@@ -115,17 +118,34 @@ Host ag
   ControlPath ~/.ssh/cm-%C
   ControlPersist 10m
   ServerAliveInterval 60
-  ServerAliveCountMax 3
-  RequestTTY yes
+  RequestTTY yes # Required for the interactive UI
   LogLevel QUIET
-  RemoteCommand /home/username/.local/bin/atelier-go
-
 ```
 
-Then, if you want to run Atelier Go on the remote host just do this:
+### 3. Local Alias
+
+Add the following alias to your local shell configuration (e.g., `~/.zshrc` or `~/.bashrc`):
 
 ```bash
-ssh ag
+alias ag='ssh -t agr -- /home/username/.local/bin/atelier-go'
+```
+
+*   **`-t`**: Forces a PTY allocation, which is required for the `fzf` UI.
+*   **`--`**: Ensures all following flags are passed to `atelier-go` instead of `ssh`.
+
+### Usage
+
+Now you can use the remote version of Atelier Go seamlessly:
+
+```bash
+# Launch the interactive UI
+agr
+
+# List remote sessions
+agr sessions list
+
+# Start with specific UI filters
+agr ui --projects
 ```
 
 ## Inspiration and Prior Art
