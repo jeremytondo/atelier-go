@@ -4,6 +4,7 @@ package sessions
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -41,6 +42,10 @@ func (m *Manager) Attach(name string, dir string, args ...string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return nil
+		}
 		return fmt.Errorf("zmx session ended with error: %w", err)
 	}
 
