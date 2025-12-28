@@ -26,12 +26,8 @@ func newRootCmd() *cobra.Command {
 		Short:   "A local-first CLI workflow tool",
 		Version: version,
 		Run: func(cmd *cobra.Command, args []string) {
-			// Default to showing everything
-			opts := ui.Options{
-				ShowProjects: true,
-				ShowZoxide:   true,
-			}
-			if err := ui.Run(opts); err != nil {
+			// Default behavior: UI handles defaults (showing everything)
+			if err := ui.Run(ui.Options{}); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
