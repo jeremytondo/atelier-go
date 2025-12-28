@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"atelier-go/internal/config"
 	"atelier-go/internal/locations"
 	"context"
 	"fmt"
@@ -19,16 +18,18 @@ func newLocationsCmd() *cobra.Command {
 		Use:   "locations",
 		Short: "List available projects and directories",
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg, err := config.Load()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to load config: %v\n", err)
+			opts := locations.FetchOptions{
+				IncludeProjects: listProjectsOnly,
+				IncludeZoxide:   listZoxideOnly,
 			}
 
-			projectProvider := locations.NewProjectProvider(cfg)
-			zoxideProvider := locations.NewZoxideProvider()
-			manager := locations.NewManager(projectProvider, zoxideProvider)
+			// Default to showing both if neither is specified
+			if !listProjectsOnly && !listZoxideOnly {
+				opts.IncludeProjects = true
+				opts.IncludeZoxide = true
+			}
 
-			locs, err := manager.GetAll(context.Background())
+			locs, err := locations.List(context.Background(), opts)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error fetching locations: %v\n", err)
 				os.Exit(1)
@@ -41,13 +42,6 @@ func newLocationsCmd() *cobra.Command {
 			}
 
 			for _, loc := range locs {
-				if listProjectsOnly && loc.Source != "Project" {
-					continue
-				}
-				if listZoxideOnly && loc.Source != "Zoxide" {
-					continue
-				}
-
 				actionCount := len(loc.Actions)
 				actionStr := "-"
 				if actionCount > 0 {

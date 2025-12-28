@@ -4,9 +4,61 @@ package ui
 import (
 	"atelier-go/internal/locations"
 	"atelier-go/internal/sessions"
+	"context"
 	"fmt"
 	"strings"
 )
+
+// Options configuration for the UI.
+type Options struct {
+	ShowProjects bool
+	ShowZoxide   bool
+}
+
+// Run executes the interactive UI.
+// It fetches locations based on options, prompts the user, and attaches to a session.
+func Run(opts Options) error {
+	// 1. Fetch Locations
+	fetchOpts := locations.FetchOptions{
+		IncludeProjects: opts.ShowProjects,
+		IncludeZoxide:   opts.ShowZoxide,
+	}
+
+	// Default to showing both if neither is specified
+	if !opts.ShowProjects && !opts.ShowZoxide {
+		fetchOpts.IncludeProjects = true
+		fetchOpts.IncludeZoxide = true
+	}
+
+	locs, err := locations.List(context.Background(), fetchOpts)
+	if err != nil {
+		return fmt.Errorf("failed to fetch locations: %w", err)
+	}
+
+	if len(locs) == 0 {
+		fmt.Println("No projects or recent directories found.")
+		return nil
+	}
+
+	// 2. Interactive Selection
+	result, err := runSelection(locs)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		// User cancelled
+		return nil
+	}
+
+	// 3. Attach to Session
+	sessionManager := sessions.NewManager()
+	fmt.Printf("Attaching to session '%s' in %s\n", result.SessionName, result.Path)
+	if err := sessionManager.Attach(result.SessionName, result.Path, result.CommandArgs...); err != nil {
+		return fmt.Errorf("error attaching to session: %w", err)
+	}
+
+	return nil
+}
 
 // WorkflowResult represents the outcome of the user interaction.
 type WorkflowResult struct {
@@ -15,12 +67,8 @@ type WorkflowResult struct {
 	CommandArgs []string
 }
 
-// RunInteractiveWorkflow executes the interactive selection process.
-func RunInteractiveWorkflow(locs []locations.Location) (*WorkflowResult, error) {
-	if len(locs) == 0 {
-		return nil, fmt.Errorf("no locations found")
-	}
-
+// runSelection executes the selection logic.
+func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 	displayMap := make(map[string]locations.Location)
 	var choices []string
 
@@ -86,7 +134,8 @@ func RunInteractiveWorkflow(locs []locations.Location) (*WorkflowResult, error) 
 					sessionName = fmt.Sprintf("%s:%s", sessions.Sanitize(item.Name), entry.name)
 				}
 				if entry.cmd != "" {
-					commandArgs = strings.Fields(entry.cmd)
+					// Use shell to execute command string
+					commandArgs = []string{"/bin/sh", "-c", entry.cmd}
 				}
 			}
 		}
