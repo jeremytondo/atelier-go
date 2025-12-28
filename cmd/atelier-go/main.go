@@ -3,8 +3,10 @@ package main
 
 import (
 	"atelier-go/internal/cli"
+	"atelier-go/internal/env"
 )
 
 func main() {
+	env.Bootstrap()
 	cli.Execute()
 }
