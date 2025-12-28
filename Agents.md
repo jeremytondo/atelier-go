@@ -21,14 +21,11 @@ The main entry point for the user.
     2.  **Action Selection**: (Optional) Choose a specific task to run.
   - Manages session lifecycle via `sessions` (wrapping `zmx`/`shpool`).
 
-### Server Agent (`atelier-go-server`)
-- Stubbed for future remote agent capabilities.
-
 ## Codebase Structure
 
 The project follows a standard Go CLI layout with a flat internal structure:
 
-- **`cmd/`**: Binary entry points (`atelier-go`, `atelier-go-server`).
+- **`cmd/`**: Binary entry point (`atelier-go`).
 - **`internal/`**:
   - **`cli/`**: Cobra command definitions.
   - **`config/`**: Configuration loading and structs.
