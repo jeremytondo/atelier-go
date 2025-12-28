@@ -1,156 +1,66 @@
 package ui
 
 import (
-	"atelier-go/internal/api"
+	"bytes"
 	"fmt"
-	"io"
-	"maps"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-
-	"github.com/spf13/viper"
 )
 
-func RunFzfWithBindings(items []string, currentFilter string) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		exe = "atelier-go"
-	}
-
-	// Default bindings
-	bindings := map[string]string{
-		api.FilterSessions: "ctrl-s",
-		api.FilterProjects: "ctrl-p",
-		api.FilterAll:      "ctrl-a",
-		api.FilterFrequent: "ctrl-f",
-	}
-
-	// Override with config
-	if viper.IsSet("keys") {
-		keys := viper.GetStringMapString("keys")
-		maps.Copy(bindings, keys)
-	}
-
-	var bindArgs []string
-	var headerParts []string
-
-	// Define order for header
-	order := []string{api.FilterSessions, api.FilterProjects, api.FilterFrequent, api.FilterAll}
-
-	for _, mode := range order {
-		key, ok := bindings[mode]
-		if !ok {
-			continue
-		}
-
-		// Determine flag
-		flag := ""
-		switch mode {
-		case api.FilterSessions:
-			flag = " --sessions"
-		case api.FilterProjects:
-			flag = " --projects"
-		case api.FilterAll:
-			flag = " --all"
-		case api.FilterFrequent:
-			flag = " --frequent"
-		}
-
-		label := toTitle(mode)
-
-		// Construct reload command
-		// e.g. /path/to/atelier-go client --list --sessions
-		cmdStr := fmt.Sprintf("%s client --list%s", exe, flag)
-
-		// Construct bind string
-		// e.g. ctrl-s:reload(...)+change-prompt(Sessions ➜ )
-		bind := fmt.Sprintf("%s:reload(%s)+change-prompt(%s ➜ )", key, cmdStr, label)
-		bindArgs = append(bindArgs, "--bind", bind)
-
-		headerParts = append(headerParts, fmt.Sprintf("%s: %s", strings.ToUpper(key), label))
-	}
-
-	header := strings.Join(headerParts, " | ")
-	prompt := toTitle(currentFilter) + " ➜ "
-
-	cmd := exec.Command("fzf",
-		"--height=40%",
+// Select opens fzf with the provided items and returns the selected item and the key pressed.
+// If expects is provided, fzf will print the key pressed as the first line.
+func Select(items []string, header string, prompt string, expects []string) (string, string, error) {
+	// Added --height=40% to match legacy behavior and potentially fix cursor issues.
+	// Switched from --expect to --bind to avoid potential Esc key handling issues.
+	args := []string{
+		"--ansi",
+		"--no-sort",
 		"--layout=reverse",
-		"--border",
-		"--prompt="+prompt,
-		"--delimiter=\t",
-		"--with-nth=1",
-		"--header="+header,
-		"--header-first",
-	)
-
-	// Add bind args
-	cmd.Args = append(cmd.Args, bindArgs...)
-
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return "", err
+		"--height=40%",
+		"--bind=esc:abort",
 	}
 
-	go func() {
-		defer stdin.Close()
-		for _, item := range items {
-			io.WriteString(stdin, item+"\n")
-		}
-	}()
+	if header != "" {
+		args = append(args, fmt.Sprintf("--header=%s", header))
+	}
+	if prompt != "" {
+		args = append(args, fmt.Sprintf("--prompt=%s", prompt))
+	}
+
+	// Map expected keys to bindings that print the key and accept
+	for _, key := range expects {
+		// print(key) writes to stdout (same stream as accept)
+		// We use a null byte as a delimiter to safely separate key and selection
+		args = append(args, fmt.Sprintf("--bind=%s:print(%s)+accept", key, key))
+	}
+
+	cmd := exec.Command("fzf", args...)
+	cmd.Stderr = os.Stderr
+
+	// Pipe items to stdin
+	var buf bytes.Buffer
+	for _, item := range items {
+		buf.WriteString(item + "\n")
+	}
+	cmd.Stdin = &buf
 
 	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		// If fzf exits with non-zero (e.g. cancelled), we return an error
+		return "", "", fmt.Errorf("selection cancelled or failed: %w", err)
 	}
 
-	return strings.TrimSpace(string(output)), nil
-}
+	outStr := strings.TrimSpace(string(output))
 
-func SelectAction(path string, actions []api.Action) (api.Action, error) {
-	var names []string
-	for _, a := range actions {
-		names = append(names, a.Name)
-	}
-
-	header := fmt.Sprintf("Select Action for %s", filepath.Base(path))
-
-	cmd := exec.Command("fzf", "--height=20%", "--layout=reverse", "--border", "--header="+header, "--prompt=Action ➜ ")
-	cmd.Stderr = os.Stderr
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return api.Action{}, err
-	}
-
-	go func() {
-		defer stdin.Close()
-		for _, n := range names {
-			io.WriteString(stdin, n+"\n")
-		}
-	}()
-
-	output, err := cmd.Output()
-	if err != nil {
-		return api.Action{}, err
-	}
-	selectedName := strings.TrimSpace(string(output))
-
-	for _, a := range actions {
-		if a.Name == selectedName {
-			return a, nil
+	// Check if any expected key prefixes the output
+	for _, key := range expects {
+		if strings.HasPrefix(outStr, key) {
+			// Found a bound key
+			val := strings.TrimPrefix(outStr, key)
+			return strings.TrimSpace(val), key, nil
 		}
 	}
-	return api.Action{}, fmt.Errorf("action not found")
-}
 
-func toTitle(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	return outStr, "", nil
 }

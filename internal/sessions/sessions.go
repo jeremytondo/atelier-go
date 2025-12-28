@@ -1,0 +1,128 @@
+// Package sessions handles workspace session management.
+package sessions
+
+import (
+	"atelier-go/internal/utils"
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+)
+
+// Session represents a running workspace session.
+type Session struct {
+	ID   string
+	Path string
+}
+
+// Manager handles interaction with the zmx session manager.
+type Manager struct{}
+
+// NewManager creates a new session manager.
+func NewManager() *Manager {
+	return &Manager{}
+}
+
+// Attach connects to an existing zmx session or creates a new one with the given name.
+func (m *Manager) Attach(name string, dir string, args ...string) error {
+	cmdArgs := []string{"attach", name}
+	if len(args) > 0 {
+		cmdArgs = append(cmdArgs, args...)
+	}
+
+	cmd := exec.Command("zmx", cmdArgs...)
+	cmd.Dir = dir
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return nil
+		}
+		return fmt.Errorf("zmx session ended with error: %w", err)
+	}
+
+	return nil
+}
+
+// List returns a list of active sessions.
+// It assumes 'zmx list' returns output where each line is "ID" or "ID\tPath".
+func (m *Manager) List() ([]Session, error) {
+	cmd := exec.Command("zmx", "list")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sessions: %w", err)
+	}
+
+	var sessions []Session
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "\t", 2)
+		sess := Session{ID: parts[0]}
+		if len(parts) > 1 {
+			sess.Path = parts[1]
+		}
+		sessions = append(sessions, sess)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to parse session list: %w", err)
+	}
+
+	return sessions, nil
+}
+
+// Kill terminates a session.
+func (m *Manager) Kill(name string) error {
+	cmd := exec.Command("zmx", "kill", name)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to kill session %s: %w", name, err)
+	}
+	return nil
+}
+
+var sanitizeRegex = regexp.MustCompile(`[^a-z0-9]+`)
+
+// Sanitize cleans a string to be used as a session name component.
+func Sanitize(s string) string {
+	s = strings.ToLower(s)
+	s = sanitizeRegex.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
+}
+
+// PrintTable formats and prints the sessions to the provided writer in a table format.
+func (m *Manager) PrintTable(w io.Writer, sessions []Session) error {
+	if len(sessions) == 0 {
+		if _, err := fmt.Fprintln(w, "No active sessions found."); err != nil {
+			return fmt.Errorf("error writing output: %w", err)
+		}
+		return nil
+	}
+
+	tw := utils.NewTableWriter(w)
+	if _, err := fmt.Fprintln(tw, "ID\tPATH"); err != nil {
+		return fmt.Errorf("error writing header: %w", err)
+	}
+
+	for _, s := range sessions {
+		if _, err := fmt.Fprintf(tw, "%s\t%s\n", s.ID, s.Path); err != nil {
+			return fmt.Errorf("error writing row: %w", err)
+		}
+	}
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("error flushing writer: %w", err)
+	}
+	return nil
+}

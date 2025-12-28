@@ -1,57 +1,83 @@
 # Agents & Components
 
-This document describes the architecture and components (Agents) of the `atelier-go` system, which replaces the previous Bash-based implementation with a unified Go application.
+This document describes the architecture and components of the `atelier-go` app.
 
-## Core System Agents
+## RULES
+* NEVER commit anything to git.
+* DO NOT write tests.
 
-The system is built as a single Go binary (`atelier-go`) that operates in two primary modes:
+## Core System Architecture
 
-### 1. The Daemon (Server)
+The system is built as a local-first interactive CLI, organized in a domain-driven flat structure.
 
-**Command:** `atelier-go server`
+### The CLI Agent (`atelier-go`)
 
-The Daemon is the central agent running on the host machine (where your code lives).
-
-- **Responsibilities:**
-  - Runs as a background service (default port: `9001`).
-  - Exposes a secure HTTP API protected by Bearer tokens.
-  - Aggregates state from system integrations (`shpool` sessions, `zoxide` paths).
-  - Handles health checks and authentication.
-
-### 2. The Client
-
-**Command:** `atelier-go client`
-
-The Client is the user-facing agent that facilitates connection and workflow management.
+The main entry point for the user.
 
 - **Responsibilities:**
-  - Connects to the Daemon via HTTP to fetch active sessions and recent locations.
-  - Provides an interactive, fuzzy-searchable UI using `fzf`.
-  - Manages the SSH connection lifecycle.
-  - Attaches to existing `shpool` sessions or creates new ones based on user selection.
+  - Aggregates locations via the **Location Provider** architecture (Projects, Zoxide).
+  - Provides a two-step interactive workflow using `fzf`:
+    1.  **Project Selection**: Filter and select a target workspace.
+    2.  **Action Selection**: (Optional) Choose a specific task to run.
+  - Manages session lifecycle via `sessions` (wrapping `zmx`/`shpool`).
+
+## Codebase Structure
+
+The project follows a standard Go CLI layout with a flat internal structure:
+
+- **`cmd/`**: Binary entry point (`atelier-go`).
+- **`internal/`**:
+  - **`cli/`**: Cobra command definitions and CLI entry points.
+  - **`config/`**: Configuration loading, validation, and schema definitions.
+  - **`env/`**: Environment bootstrapping and remote context management.
+  - **`locations/`**: Location discovery via Providers (`Provider` interface, `Manager`).
+  - **`sessions/`**: Session management via `zmx` (`Manager`, `Session`).
+  - **`ui/`**: Interactive UI logic (`fzf` wrapper, table rendering).
+  - **`utils/`**: Shared helpers (hostname detection, terminal utilities).
+
+## Workflow
+
+1.  **Launch**: User runs `atelier-go`.
+2.  **Bootstrap**: The `env` package detects if the process needs to be re-executed in a login shell (e.g., in restricted SSH contexts).
+3.  **Discovery**: The `locations` manager queries all providers (Config, Zoxide) in parallel.
+4.  **Select**: The `ui` package displays a merged, fuzzy-searchable list using `fzf`.
+5.  **Act**: User selects a location and optionally an action.
+6.  **Attach**: The `sessions` manager attaches to the persistent session via `zmx`.
+
+## Configuration
+
+Configuration is stored in `~/.config/atelier-go/config.toml`.
+
+```toml
+# Example Configuration
+
+[[projects]]
+  name = "atelier-go"
+  path = "/Users/me/Projects/atelier-go"
+
+  [[projects.actions]]
+    name = "Run Server"
+    command = "go run main.go server"
+
+  [[projects.actions]]
+    name = "Test"
+    command = "go test ./..."
+```
 
 ## External Helper Agents
 
-The system orchestrates several external tools to provide robust functionality:
+The system orchestrates several external tools:
 
-- **shpool:** Handles persistent shell sessions, ensuring work is not lost if the connection drops.
-- **zoxide:** Provides "frecent" (frequent + recent) directory tracking, allowing quick navigation to commonly used project folders.
-- **fzf:** Powers the interactive selection interface for filtering sessions and directories.
-- **ssh:** Provides the secure transport layer for the client to interact with the host environment.
+- **zmx:** Session manager wrapping `shpool`.
+- **zoxide:** Directory jumper (used as a Location Provider).
+- **fzf:** Fuzzy finder for the UI.
 
-## Workspace Actions
+## Coding Standards
 
-When initiating a new session in a target directory, the user can choose from the following operational modes:
+All code MUST adhere to standard Go conventions and pass linting checks.
 
-1. **Edit:** Launches `nvim` (Neovim) directly in the target directory.
-2. **Shell:** Launches a standard interactive shell (`bash` or configured `$SHELL`).
-3. **Opencode:** Launches the `opencode` CLI agent in the target directory.
-
-## Configuration Conventions
-
-- **Parameter Naming:** All keys in configuration files (e.g., `client.toml`) MUST use **kebab-case** (e.g., `default-filter`, `log-level`) instead of snake_case or camelCase.
-
-## Agent Behavior
-
-- NEVER commit anything to git.
-- DO NOT write tests.
+1.  **Package Entry Points**: Each package must have a primary file named after the package (e.g., `locations/locations.go`) containing the core types and constructors.
+2.  **Error Strings**: Error messages used with `fmt.Errorf` or `errors.New` must be lowercase and not end with punctuation.
+3.  **Comments**: All exported entities must be documented. Packages must have package comments.
+4.  **Linting**: Run `go vet ./cmd/... ./internal/...` to verify correctness.
+5.  **Formatting**: All code must be formatted with `gofmt`.

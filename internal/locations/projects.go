@@ -1,0 +1,93 @@
+package locations
+
+import (
+	"atelier-go/internal/config"
+	"atelier-go/internal/utils"
+	"context"
+	"fmt"
+	"path/filepath"
+
+	"github.com/spf13/viper"
+)
+
+// ProjectProvider implements Provider for configured projects.
+type ProjectProvider struct {
+	configDir string
+}
+
+// NewProjectProvider creates a new ProjectProvider.
+func NewProjectProvider(configDir string) *ProjectProvider {
+	return &ProjectProvider{configDir: configDir}
+}
+
+// Name returns the provider name.
+func (p *ProjectProvider) Name() string {
+	return "Project"
+}
+
+// Fetch returns the list of configured projects as Locations.
+func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
+	projectsDir := filepath.Join(p.configDir, "projects")
+
+	// 1. Get Hostname
+	hostname, _ := utils.GetHostname() // Ignore error, just don't load machine specific if fails
+
+	// 2. Identify all relevant files
+	fileMap := make(map[string]string)
+
+	// Global projects
+	globalFiles, err := filepath.Glob(filepath.Join(projectsDir, "*.toml"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list project files: %w", err)
+	}
+	for _, f := range globalFiles {
+		fileMap[filepath.Base(f)] = f
+	}
+
+	// Machine-specific projects (override global)
+	if hostname != "" {
+		machineDir := filepath.Join(projectsDir, hostname)
+		machineFiles, err := filepath.Glob(filepath.Join(machineDir, "*.toml"))
+		if err == nil {
+			for _, f := range machineFiles {
+				fileMap[filepath.Base(f)] = f
+			}
+		}
+	}
+
+	// 3. Process files
+	var locations []Location
+	for _, file := range fileMap {
+		v := viper.New()
+		v.SetConfigFile(file)
+		if err := v.ReadInConfig(); err != nil {
+			// Skip malformed files
+			continue
+		}
+
+		var proj config.Project
+		if err := v.Unmarshal(&proj); err != nil {
+			continue
+		}
+
+		if proj.Path == "" {
+			continue
+		}
+
+		// Expand path
+		expandedPath, err := utils.ExpandPath(proj.Path)
+		if err != nil {
+			// Keep original if expansion fails
+			expandedPath = proj.Path
+		}
+
+		locations = append(locations, Location{
+			Name:    proj.Name,
+			Path:    filepath.Clean(expandedPath),
+			Source:  p.Name(),
+			Actions: proj.Actions,
+		})
+	}
+
+	return locations, nil
+}
