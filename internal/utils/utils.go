@@ -52,10 +52,7 @@ func ExpandPath(path string) (string, error) {
 	return expanded, nil
 }
 
-// GetCanonicalPath returns the absolute, case-corrected, and symlink-resolved version of a path.
-// This is critical on macOS where the filesystem is case-insensitive but tools often expect
-// the canonical disk casing. It performs a component-by-component lookup to ensure
-// the returned path matches exactly what is on disk.
+// GetCanonicalPath returns the absolute and symlink-resolved version of a path.
 func GetCanonicalPath(path string) (string, error) {
 	if path == "" {
 		return "", nil
@@ -73,39 +70,7 @@ func GetCanonicalPath(path string) (string, error) {
 		return abs, nil // Return absolute path if resolution fails
 	}
 
-	// 3. Force correct casing (Recursive ReadDir lookup)
-	return correctCasing(resolved)
-}
-
-func correctCasing(path string) (string, error) {
-	if path == "/" || path == "" || path == "." {
-		return path, nil
-	}
-
-	parent := filepath.Dir(path)
-	if parent == path {
-		return path, nil
-	}
-
-	canonicalParent, err := correctCasing(parent)
-	if err != nil {
-		return path, err
-	}
-
-	entries, err := os.ReadDir(canonicalParent)
-	if err != nil {
-		// If we can't read the directory, just return the path as-is
-		return filepath.Join(canonicalParent, filepath.Base(path)), nil
-	}
-
-	base := filepath.Base(path)
-	for _, entry := range entries {
-		if strings.EqualFold(entry.Name(), base) {
-			return filepath.Join(canonicalParent, entry.Name()), nil
-		}
-	}
-
-	return filepath.Join(canonicalParent, base), nil
+	return resolved, nil
 }
 
 // SetTerminalTitle updates the terminal window title using ANSI escape sequences.
