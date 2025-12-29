@@ -2,7 +2,6 @@ package cli
 
 import (
 	"atelier-go/internal/locations"
-	"context"
 	"fmt"
 	"os"
 
@@ -17,12 +16,13 @@ func newLocationsCmd() *cobra.Command {
 		Use:   "locations",
 		Short: "List available projects and directories",
 		Run: func(cmd *cobra.Command, args []string) {
-			opts := locations.FetchOptions{
-				IncludeProjects: listProjectsOnly,
-				IncludeZoxide:   listZoxideOnly,
+			mgr, err := setupLocationManager(listProjectsOnly, listZoxideOnly)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error building manager: %v\n", err)
+				os.Exit(1)
 			}
 
-			locs, err := locations.List(context.Background(), opts)
+			locs, err := mgr.GetAll(cmd.Context())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error fetching locations: %v\n", err)
 				os.Exit(1)

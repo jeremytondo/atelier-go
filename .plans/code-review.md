@@ -65,9 +65,9 @@ However, there are critical performance risks related to filesystem operations, 
 - [x] **Simplify Path Handling**
   - [x] Remove `correctCasing` from `internal/utils/utils.go`.
   - [x] Standardize path canonicalization on `filepath.Abs` and `filepath.EvalSymlinks`.
-- [ ] **Refactor Locations for Dependency Injection**
-  - [ ] Modify `locations.List` (or `locations.Manager`) to accept providers as arguments rather than instantiating them internally.
-  - [ ] Update CLI/UI layers to inject the required providers.
+- [x] **Refactor Locations for Dependency Injection**
+  - [x] Modify `locations.List` (or `locations.Manager`) to accept providers as arguments rather than instantiating them internally.
+  - [x] Update CLI/UI layers to inject the required providers.
 - [x] **Optimize Configuration Loading**
   - [x] Centralize configuration loading in `internal/config`.
   - [x] Switch to unified YAML structure (`config.yaml` and `<hostname>.yaml`).
@@ -84,7 +84,7 @@ However, there are critical performance risks related to filesystem operations, 
 The `utils.correctCasing` function has been removed and `GetCanonicalPath` has been simplified. We now use `os.Stat` to validate project paths, which properly supports symlinks while avoiding the previous expensive and restrictive recursive canonicalization logic.
 
 ### Dependency Injection
-Hardcoded providers in `internal/locations` make unit testing difficult. Moving provider instantiation to the entry point (CLI) and passing them down via interfaces will improve testability.
+We refactored `locations.Manager` to accept a variadic list of `Provider` interfaces in its constructor. The `locations.List` function was removed in favor of this instance-based approach. Provider instantiation and wiring are now centralized in `internal/cli/setup.go` via the `setupLocationManager` helper, and the fully configured manager is passed explicitly to `ui.Run`. This decouples the location logic from specific implementations and significantly improves testability.
 
 ### Configuration
 Configuration loading has been centralized in `internal/config`. We moved from multiple TOML files to a unified YAML structure (`config.yaml` and `<hostname>.yaml`). Viper usage was optimized by instantiating it once and manually merging projects to avoid slice-replacement issues.

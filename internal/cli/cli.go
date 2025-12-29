@@ -28,7 +28,12 @@ func newRootCmd() *cobra.Command {
 		Version: Version,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Default behavior: UI handles defaults (showing everything)
-			if err := ui.Run(cmd.Context(), ui.Options{}); err != nil {
+			mgr, err := setupLocationManager(false, false)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := ui.Run(cmd.Context(), mgr); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}

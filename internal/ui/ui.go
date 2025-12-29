@@ -10,22 +10,11 @@ import (
 	"fmt"
 )
 
-// Options configuration for the UI.
-type Options struct {
-	ShowProjects bool
-	ShowZoxide   bool
-}
-
 // Run executes the interactive UI.
-// It fetches locations based on options, prompts the user, and attaches to a session.
-func Run(ctx context.Context, opts Options) error {
+// It fetches locations using the provided manager, prompts the user, and attaches to a session.
+func Run(ctx context.Context, mgr *locations.Manager) error {
 	// 1. Fetch Locations
-	fetchOpts := locations.FetchOptions{
-		IncludeProjects: opts.ShowProjects,
-		IncludeZoxide:   opts.ShowZoxide,
-	}
-
-	locs, err := locations.List(ctx, fetchOpts)
+	locs, err := mgr.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch locations: %w", err)
 	}
