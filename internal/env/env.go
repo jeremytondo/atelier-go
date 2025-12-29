@@ -2,25 +2,12 @@
 package env
 
 import (
-	"atelier-go/internal/utils"
 	"os"
 	"os/exec"
 	"os/user"
 	"runtime"
 	"strings"
 )
-
-// Bootstrap ensures the application has a complete environment.
-// It corrects the working directory casing to avoid issues on macOS.
-func Bootstrap() {
-	// 1. Normalize the Working Directory casing
-	if cwd, err := os.Getwd(); err == nil {
-		if canonical, err := utils.GetCanonicalPath(cwd); err == nil && canonical != cwd {
-			_ = os.Chdir(canonical)
-			_ = os.Setenv("PWD", canonical)
-		}
-	}
-}
 
 // BuildInteractiveWrapper wraps a command to run inside an interactive login shell.
 // This ensures that the user's full environment (profiles, rc files) is loaded.
