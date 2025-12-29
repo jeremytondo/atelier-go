@@ -2,12 +2,13 @@
 package locations
 
 import (
-	"atelier-go/internal/config"
-	"atelier-go/internal/utils"
 	"context"
 	"fmt"
 	"io"
 	"sync"
+
+	"atelier-go/internal/config"
+	"atelier-go/internal/utils"
 )
 
 // FetchOptions defines criteria for fetching locations.
@@ -43,22 +44,22 @@ func List(ctx context.Context, opts FetchOptions) ([]Location, error) {
 		opts.IncludeZoxide = true
 	}
 
-	// 1. Get Config Directory (needed for ProjectProvider)
-	configDir, err := config.GetConfigDir()
+	// Load Config
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to determine config directory: %w", err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// 2. Initialize Providers based on options
+	// Initialize Providers based on options
 	var providers []Provider
 	if opts.IncludeProjects {
-		providers = append(providers, NewProjectProvider(configDir))
+		providers = append(providers, NewProjectProvider(cfg.Projects))
 	}
 	if opts.IncludeZoxide {
 		providers = append(providers, NewZoxideProvider())
 	}
 
-	// 3. Create Manager and Fetch
+	// Create Manager and Fetch
 	manager := NewManager(providers...)
 	return manager.GetAll(ctx)
 }

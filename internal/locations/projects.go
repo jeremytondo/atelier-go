@@ -5,19 +5,18 @@ import (
 	"atelier-go/internal/utils"
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
-
-	"github.com/spf13/viper"
 )
 
 // ProjectProvider implements Provider for configured projects.
 type ProjectProvider struct {
-	configDir string
+	projects []config.Project
 }
 
 // NewProjectProvider creates a new ProjectProvider.
-func NewProjectProvider(configDir string) *ProjectProvider {
-	return &ProjectProvider{configDir: configDir}
+func NewProjectProvider(projects []config.Project) *ProjectProvider {
+	return &ProjectProvider{projects: projects}
 }
 
 // Name returns the provider name.
@@ -27,49 +26,9 @@ func (p *ProjectProvider) Name() string {
 
 // Fetch returns the list of configured projects as Locations.
 func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
-	projectsDir := filepath.Join(p.configDir, "projects")
-
-	// 1. Get Hostname
-	hostname, _ := utils.GetHostname() // Ignore error, just don't load machine specific if fails
-
-	// 2. Identify all relevant files
-	fileMap := make(map[string]string)
-
-	// Global projects
-	globalFiles, err := filepath.Glob(filepath.Join(projectsDir, "*.toml"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list project files: %w", err)
-	}
-	for _, f := range globalFiles {
-		fileMap[filepath.Base(f)] = f
-	}
-
-	// Machine-specific projects (override global)
-	if hostname != "" {
-		machineDir := filepath.Join(projectsDir, hostname)
-		machineFiles, err := filepath.Glob(filepath.Join(machineDir, "*.toml"))
-		if err == nil {
-			for _, f := range machineFiles {
-				fileMap[filepath.Base(f)] = f
-			}
-		}
-	}
-
-	// 3. Process files
 	var locations []Location
-	for _, file := range fileMap {
-		v := viper.New()
-		v.SetConfigFile(file)
-		if err := v.ReadInConfig(); err != nil {
-			// Skip malformed files
-			continue
-		}
 
-		var proj config.Project
-		if err := v.Unmarshal(&proj); err != nil {
-			continue
-		}
-
+	for _, proj := range p.projects {
 		if proj.Path == "" {
 			continue
 		}
@@ -80,10 +39,9 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 			expandedPath = proj.Path
 		}
 
-		// 2. Validate canonical path (fixes case sensitivity issues on macOS)
-		canonical, err := utils.GetCanonicalPath(expandedPath)
-		if err == nil && canonical != expandedPath {
-			return nil, fmt.Errorf("project %q path mismatch: config has %q but disk has %q. please update your config to match the physical disk casing", proj.Name, expandedPath, canonical)
+		// 2. Validate path exists
+		if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("project %q path does not exist: %s", proj.Name, expandedPath)
 		}
 
 		locations = append(locations, Location{

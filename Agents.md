@@ -46,22 +46,19 @@ The project follows a standard Go CLI layout with a flat internal structure:
 
 ## Configuration
 
-Configuration is stored in `~/.config/atelier-go/config.toml`.
+Configuration is stored in `~/.config/atelier-go/config.yaml`.
 
-```toml
+```yaml
 # Example Configuration
 
-[[projects]]
-  name = "atelier-go"
-  path = "/Users/me/Projects/atelier-go"
-
-  [[projects.actions]]
-    name = "Run Server"
-    command = "go run main.go server"
-
-  [[projects.actions]]
-    name = "Test"
-    command = "go test ./..."
+projects:
+  - name: "atelier-go"
+    path: "/Users/me/Projects/atelier-go"
+    actions:
+      - name: "Run Server"
+        command: "go run main.go server"
+      - name: "Test"
+        command: "go test ./..."
 ```
 
 ## External Helper Agents

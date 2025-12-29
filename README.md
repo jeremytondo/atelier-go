@@ -37,21 +37,19 @@ Atelier Go looks for configuration in `~/.config/atelier-go/`.
 
 ### Projects
 
-You can define projects by creating TOML files in `~/.config/atelier-go/projects/`. Each file represents a separate project.
+You can define projects by creating a `config.yaml` file in `~/.config/atelier-go/`.
 
-**Example: `~/.config/atelier-go/projects/my-app.toml`**
+**Example: `~/.config/atelier-go/config.yaml`**
 
-```toml
-name = "My Application"
-path = "~/dev/my-app"
-
-[[actions]]
-  name = "Run Server"
-  command = "npm start"
-
-[[actions]]
-  name = "Build"
-  command = "make build"
+```yaml
+projects:
+  - name: "My Application"
+    path: "~/dev/my-app"
+    actions:
+      - name: "Run Server"
+        command: "npm start"
+      - name: "Build"
+        command: "make build"
 ```
 
 *   **`name`**: The display name shown in the UI.
@@ -60,8 +58,10 @@ path = "~/dev/my-app"
 
 ### Host-Specific Projects
 
-If you work across multiple machines, you can define projects that only show up on a specific host. Place them in a subdirectory named after the host:
-`~/.config/atelier-go/projects/<hostname>/my-app.toml`
+If you work across multiple machines, you can define projects that only show up on a specific host. Create a YAML file named after the host in the same directory:
+`~/.config/atelier-go/<hostname>.yaml`
+
+Settings in the host-specific file will be merged with the global `config.yaml`.
 
 To see what hostname Atelier Go is using for your current host, run:
 ```bash
@@ -132,8 +132,6 @@ alias ag='ssh -t agr -- /home/username/.local/bin/atelier-go'
 
 *   **`-t`**: Forces a PTY allocation, which is required for the `fzf` UI.
 *   **`--`**: Ensures all following flags are passed to `atelier-go` instead of `ssh`.
-
-### Usage
 
 Now you can use the remote version of Atelier Go seamlessly:
 

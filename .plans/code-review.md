@@ -68,10 +68,10 @@ However, there are critical performance risks related to filesystem operations, 
 - [ ] **Refactor Locations for Dependency Injection**
   - [ ] Modify `locations.List` (or `locations.Manager`) to accept providers as arguments rather than instantiating them internally.
   - [ ] Update CLI/UI layers to inject the required providers.
-- [ ] **Optimize Configuration Loading**
-  - [ ] Remove Viper dependency for project configuration.
-  - [ ] Implement configuration parsing using `pelletier/go-toml/v2`.
-  - [ ] Ensure `ProjectProvider` does not instantiate parsers in a loop.
+- [x] **Optimize Configuration Loading**
+  - [x] Centralize configuration loading in `internal/config`.
+  - [x] Switch to unified YAML structure (`config.yaml` and `<hostname>.yaml`).
+  - [x] Optimize Viper usage (single instance, manual merging).
 - [ ] **Consolidate UI Components**
   - [ ] Create a generic `PrintTable` function in `internal/ui` or `internal/utils`.
   - [ ] Refactor `locations` and `sessions` to use the shared table rendering logic.
@@ -81,13 +81,13 @@ However, there are critical performance risks related to filesystem operations, 
 ## Implementation Notes
 
 ### Path Handling
-The `utils.correctCasing` function has been removed and `GetCanonicalPath` has been simplified to use `filepath.Abs` and `filepath.EvalSymlinks`. This addresses the performance bottleneck caused by recursive `os.ReadDir` calls while maintaining correct path normalization.
+The `utils.correctCasing` function has been removed and `GetCanonicalPath` has been simplified. We now use `os.Stat` to validate project paths, which properly supports symlinks while avoiding the previous expensive and restrictive recursive canonicalization logic.
 
 ### Dependency Injection
 Hardcoded providers in `internal/locations` make unit testing difficult. Moving provider instantiation to the entry point (CLI) and passing them down via interfaces will improve testability.
 
 ### Configuration
-Viper's overhead is unnecessary for the project's needs, especially when called within loops. Switching to `go-toml/v2` provides a lighter, faster alternative for TOML parsing.
+Configuration loading has been centralized in `internal/config`. We moved from multiple TOML files to a unified YAML structure (`config.yaml` and `<hostname>.yaml`). Viper usage was optimized by instantiating it once and manually merging projects to avoid slice-replacement issues.
 
 ### UI & UX
 The `fzf` integration currently relies on string prefix matching which can be ambiguous if project names or paths share common prefixes. A delimited format (e.g., using a null byte or a specific separator) will make result parsing more robust.
