@@ -2,12 +2,12 @@
 package ui
 
 import (
+	"atelier-go/internal/env"
 	"atelier-go/internal/locations"
 	"atelier-go/internal/sessions"
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 )
 
 // Options configuration for the UI.
@@ -96,12 +96,14 @@ func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 	var commandArgs []string
 	forceShell := key == "alt-s"
 
+	shell := env.DetectShell()
+
 	if !forceShell && len(item.Actions) > 0 {
 		if len(item.Actions) == 1 {
 			// Auto-attach to the single configured action
 			act := item.Actions[0]
 			sessionName = fmt.Sprintf("%s:%s", sessions.Sanitize(item.Name), sessions.Sanitize(act.Name))
-			commandArgs = strings.Fields(act.Command)
+			commandArgs = env.BuildInteractiveWrapper(shell, act.Command)
 		} else {
 			// Multiple actions: Show menu
 			type actEntry struct {
@@ -136,10 +138,15 @@ func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 				}
 				if entry.cmd != "" {
 					// Use shell to execute command string
-					commandArgs = []string{"/bin/sh", "-c", entry.cmd}
+					commandArgs = env.BuildInteractiveWrapper(shell, entry.cmd)
 				}
 			}
 		}
+	}
+
+	// If no action was selected (or shell was forced), default to the detected shell.
+	if len(commandArgs) == 0 {
+		commandArgs = env.BuildInteractiveWrapper(shell, "")
 	}
 
 	return &WorkflowResult{

@@ -1,6 +1,7 @@
 package locations
 
 import (
+	"atelier-go/internal/utils"
 	"bufio"
 	"bytes"
 	"context"
@@ -37,6 +38,11 @@ func (z *ZoxideProvider) Fetch(ctx context.Context) ([]Location, error) {
 		path := strings.TrimSpace(scanner.Text())
 		if path != "" {
 			cleanPath := filepath.Clean(path)
+			// Canonicalize path (fixes case sensitivity on macOS)
+			if canonical, err := utils.GetCanonicalPath(cleanPath); err == nil {
+				cleanPath = canonical
+			}
+
 			locations = append(locations, Location{
 				Name:   filepath.Base(cleanPath),
 				Path:   cleanPath,

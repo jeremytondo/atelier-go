@@ -74,11 +74,16 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 			continue
 		}
 
-		// Expand path
+		// 1. Expand path
 		expandedPath, err := utils.ExpandPath(proj.Path)
 		if err != nil {
-			// Keep original if expansion fails
 			expandedPath = proj.Path
+		}
+
+		// 2. Validate canonical path (fixes case sensitivity issues on macOS)
+		canonical, err := utils.GetCanonicalPath(expandedPath)
+		if err == nil && canonical != expandedPath {
+			return nil, fmt.Errorf("project %q path mismatch: config has %q but disk has %q. please update your config to match the physical disk casing", proj.Name, expandedPath, canonical)
 		}
 
 		locations = append(locations, Location{

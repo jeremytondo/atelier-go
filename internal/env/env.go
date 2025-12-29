@@ -2,77 +2,86 @@
 package env
 
 import (
-	"fmt"
+	"atelier-go/internal/utils"
 	"os"
+	"os/exec"
+	"os/user"
+	"runtime"
 	"strings"
-	"syscall"
 )
 
 // Bootstrap ensures the application has a complete environment.
-// It detects restricted SSH contexts and "promotes" the process by re-executing
-// it inside an interactive login shell.
+// It corrects the working directory casing to avoid issues on macOS.
 func Bootstrap() {
-	// 1. Check if we need to bootstrap
-	if os.Getenv("SSH_CONNECTION") == "" {
-		return // Not remote
-	}
-	if os.Getenv("ATELIER_PROMOTED") == "1" {
-		return // Already promoted
-	}
-
-	// 2. Identify the Login Shell
-	// Try the SHELL env var, upgrade from /bin/sh if possible
-	shell := os.Getenv("SHELL")
-	if shell == "" || shell == "/bin/sh" {
-		if _, err := os.Stat("/bin/zsh"); err == nil {
-			shell = "/bin/zsh"
-		} else if _, err := os.Stat("/bin/bash"); err == nil {
-			shell = "/bin/bash"
-		} else {
-			shell = "/bin/sh"
+	// 1. Normalize the Working Directory casing
+	if cwd, err := os.Getwd(); err == nil {
+		if canonical, err := utils.GetCanonicalPath(cwd); err == nil && canonical != cwd {
+			_ = os.Chdir(canonical)
+			_ = os.Setenv("PWD", canonical)
 		}
-	}
-
-	// 3. Identify Self and Arguments
-	exe, err := os.Executable()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to determine executable path: %v\n", err)
-		return
-	}
-	args := os.Args[1:]
-
-	// 4. Construct the Re-Exec Command
-	// We construct a command string that:
-	// - Exports the sentinel variable
-	// - Execs the original binary with its arguments
-	// The 'exec' is important to replace the shell process with the app.
-
-	cmdBuilder := strings.Builder{}
-	cmdBuilder.WriteString("export ATELIER_PROMOTED=1; exec ")
-	cmdBuilder.WriteString(quote(exe))
-	for _, arg := range args {
-		cmdBuilder.WriteString(" ")
-		cmdBuilder.WriteString(quote(arg))
-	}
-
-	// 5. Promote via syscall.Exec
-	// We replace the current process with the shell process.
-	// The shell will be interactive (-i) and login (-l) to load all configs.
-	shellArgs := []string{shell, "-l", "-i", "-c", cmdBuilder.String()}
-
-	// syscall.Exec requires the full environment array
-	env := os.Environ()
-
-	if err := syscall.Exec(shell, shellArgs, env); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to promote shell: %v\n", err)
-		// Fall through to normal execution if promotion fails
 	}
 }
 
-// quote escapes a string for shell usage (single quoting)
-func quote(s string) string {
-	if s == "" {
-		return "''"
+// BuildInteractiveWrapper wraps a command to run inside an interactive login shell.
+// This ensures that the user's full environment (profiles, rc files) is loaded.
+func BuildInteractiveWrapper(shell, cmd string) []string {
+	if cmd == "" {
+		// Just launch the shell as a login shell
+		return []string{shell, "-l", "-i"}
 	}
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+	// Wrap command in interactive login shell
+	return []string{shell, "-l", "-i", "-c", cmd}
+}
+
+// DetectShell identifies the user's login shell.
+func DetectShell() string {
+	shell := os.Getenv("SHELL")
+	if shell != "" && shell != "/bin/sh" {
+		return shell
+	}
+
+	if loginShell := getLoginShell(); loginShell != "" {
+		if _, err := os.Stat(loginShell); err == nil {
+			return loginShell
+		}
+	}
+
+	for _, p := range []string{
+		"/bin/zsh", "/usr/bin/zsh", "/usr/local/bin/zsh", "/opt/homebrew/bin/zsh",
+		"/bin/bash", "/usr/bin/bash", "/usr/local/bin/bash",
+		"/usr/bin/fish", "/usr/local/bin/fish", "/opt/homebrew/bin/fish",
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+
+	return "/bin/sh"
+}
+
+func getLoginShell() string {
+	u, err := user.Current()
+	if err != nil {
+		return ""
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		out, err := exec.Command("dscl", ".", "-read", "/Users/"+u.Username, "UserShell").Output()
+		if err == nil {
+			parts := strings.Split(string(out), ":")
+			if len(parts) > 1 {
+				return strings.TrimSpace(parts[1])
+			}
+		}
+	case "linux":
+		out, err := exec.Command("getent", "passwd", u.Username).Output()
+		if err == nil {
+			parts := strings.Split(strings.TrimSpace(string(out)), ":")
+			if len(parts) >= 7 {
+				return parts[6]
+			}
+		}
+	}
+	return ""
 }
