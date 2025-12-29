@@ -46,11 +46,11 @@ command = "go test ./..."
 - Error handling should be robust, especially when reading and unmarshaling multiple files.
 
 ## Checklist
-- [ ] Export `GetConfigDir` in `internal/config/config.go`
-- [ ] Remove `Projects` field from `config.Config` struct
-- [ ] Implement `ExpandPath` in `internal/utils/utils.go`
-- [ ] Refactor `ProjectProvider` in `internal/locations/projects.go` to load from directory
+- [x] Export `GetConfigDir` in `internal/config/config.go`
+- [x] Remove `Projects` field from `config.Config` struct
+- [x] Implement `ExpandPath` in `internal/utils/utils.go`
+- [x] Refactor `ProjectProvider` in `internal/locations/projects.go` to load from directory
 - [ ] Ensure `projects/` directory is created if missing
-- [ ] Apply `ExpandPath` to all project paths
-- [ ] Update `internal/cli/cli.go` to initialize provider with config path
-- [ ] Verify local projects are correctly discovered from the new directory structure
+- [x] Apply `ExpandPath` to all project paths
+- [x] Update `internal/cli/cli.go` to initialize provider with config path
+- [x] Verify local projects are correctly discovered from the new directory structure

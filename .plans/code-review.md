@@ -62,9 +62,9 @@ However, there are critical performance risks related to filesystem operations, 
 
 ## Checklist
 
-- [ ] **Simplify Path Handling**
-  - [ ] Remove `correctCasing` from `internal/utils/utils.go`.
-  - [ ] Standardize path canonicalization on `filepath.Abs` and `filepath.EvalSymlinks`.
+- [x] **Simplify Path Handling**
+  - [x] Remove `correctCasing` from `internal/utils/utils.go`.
+  - [x] Standardize path canonicalization on `filepath.Abs` and `filepath.EvalSymlinks`.
 - [ ] **Refactor Locations for Dependency Injection**
   - [ ] Modify `locations.List` (or `locations.Manager`) to accept providers as arguments rather than instantiating them internally.
   - [ ] Update CLI/UI layers to inject the required providers.
@@ -81,7 +81,7 @@ However, there are critical performance risks related to filesystem operations, 
 ## Implementation Notes
 
 ### Path Handling
-The current `utils.correctCasing` implementation uses recursive `os.ReadDir`, which causes significant performance degradation. Standard Go library functions `filepath.Abs` and `filepath.EvalSymlinks` should be used to handle path normalization more efficiently.
+The `utils.correctCasing` function has been removed and `GetCanonicalPath` has been simplified to use `filepath.Abs` and `filepath.EvalSymlinks`. This addresses the performance bottleneck caused by recursive `os.ReadDir` calls while maintaining correct path normalization.
 
 ### Dependency Injection
 Hardcoded providers in `internal/locations` make unit testing difficult. Moving provider instantiation to the entry point (CLI) and passing them down via interfaces will improve testability.
