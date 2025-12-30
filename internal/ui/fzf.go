@@ -31,11 +31,9 @@ func Select(items []string, header string, prompt string, expects []string) (str
 		args = append(args, fmt.Sprintf("--prompt=%s", prompt))
 	}
 
-	// Map expected keys to bindings that print the key and accept
-	for _, key := range expects {
-		// print(key) writes to stdout (same stream as accept)
-		// We use a null byte as a delimiter to safely separate key and selection
-		args = append(args, fmt.Sprintf("--bind=%s:print(%s)+accept", key, key))
+	// Map expected keys to --expect flag
+	if len(expects) > 0 {
+		args = append(args, "--expect="+strings.Join(expects, ","))
 	}
 
 	cmd := exec.Command("fzf", args...)
@@ -56,16 +54,20 @@ func Select(items []string, header string, prompt string, expects []string) (str
 		return "", "", fmt.Errorf("selection cancelled or failed: %w", err)
 	}
 
-	outStr := strings.TrimSpace(string(output))
+	outStr := string(output)
 
-	// Check if any expected key prefixes the output
-	for _, key := range expects {
-		if strings.HasPrefix(outStr, key) {
-			// Found a bound key
-			val := strings.TrimPrefix(outStr, key)
-			return strings.TrimSpace(val), key, nil
+	// If --expect was used, fzf prints the key on the first line and the selection on the second
+	if len(expects) > 0 {
+		lines := strings.SplitN(outStr, "\n", 2)
+		if len(lines) >= 1 {
+			key := strings.TrimSpace(lines[0])
+			selection := ""
+			if len(lines) == 2 {
+				selection = strings.TrimSpace(lines[1])
+			}
+			return selection, key, nil
 		}
 	}
 
-	return outStr, "", nil
+	return strings.TrimSpace(outStr), "", nil
 }

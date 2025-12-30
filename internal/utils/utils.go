@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 )
@@ -13,6 +15,25 @@ import (
 // NewTableWriter creates a configured tabwriter for consistent table output.
 func NewTableWriter(w io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+}
+
+// RenderTable prints a tab-separated table to the provided writer.
+func RenderTable(w io.Writer, headers []string, rows [][]string) error {
+	tw := NewTableWriter(w)
+	if _, err := fmt.Fprintf(tw, "%s\n", strings.Join(headers, "\t")); err != nil {
+		return fmt.Errorf("error writing header: %w", err)
+	}
+
+	for _, row := range rows {
+		if _, err := fmt.Fprintf(tw, "%s\n", strings.Join(row, "\t")); err != nil {
+			return fmt.Errorf("error writing row: %w", err)
+		}
+	}
+
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("error flushing writer: %w", err)
+	}
+	return nil
 }
 
 // ShortenPath replaces the user's home directory with "~" in the given path.
@@ -80,16 +101,28 @@ func SetTerminalTitle(title string) {
 
 // GetHostname returns the effective hostname for configuration purposes.
 // It prioritizes the ATELIER_HOSTNAME environment variable.
-// If not set, it falls back to the system hostname, taking only the part before the first dot.
+// On macOS, it attempts to use 'scutil --get LocalHostName' for a more stable identity.
+// If not set or not on macOS, it falls back to the system hostname.
 // The result is always lowercased.
 func GetHostname() (string, error) {
 	if h := os.Getenv("ATELIER_HOSTNAME"); h != "" {
 		return strings.ToLower(h), nil
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "", err
+	var hostname string
+	if runtime.GOOS == "darwin" {
+		out, err := exec.Command("scutil", "--get", "LocalHostName").Output()
+		if err == nil {
+			hostname = strings.TrimSpace(string(out))
+		}
+	}
+
+	if hostname == "" {
+		h, err := os.Hostname()
+		if err != nil {
+			return "", err
+		}
+		hostname = h
 	}
 
 	// Split by dot and take the first part

@@ -4,7 +4,6 @@ import (
 	"atelier-go/internal/config"
 	"atelier-go/internal/utils"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -41,7 +40,8 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 
 		// 2. Validate path exists
 		if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
-			return nil, fmt.Errorf("project %q path does not exist: %s", proj.Name, expandedPath)
+			// Skip projects that don't exist on the current machine
+			continue
 		}
 
 		locations = append(locations, Location{

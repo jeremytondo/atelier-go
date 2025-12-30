@@ -113,18 +113,12 @@ func (m *Manager) PrintTable(w io.Writer, sessions []Session) error {
 		return nil
 	}
 
-	tw := utils.NewTableWriter(w)
-	if _, err := fmt.Fprintln(tw, "ID\tPATH"); err != nil {
-		return fmt.Errorf("error writing header: %w", err)
-	}
+	headers := []string{"ID", "PATH"}
+	var rows [][]string
 
 	for _, s := range sessions {
-		if _, err := fmt.Fprintf(tw, "%s\t%s\n", s.ID, s.Path); err != nil {
-			return fmt.Errorf("error writing row: %w", err)
-		}
+		rows = append(rows, []string{s.ID, s.Path})
 	}
-	if err := tw.Flush(); err != nil {
-		return fmt.Errorf("error flushing writer: %w", err)
-	}
-	return nil
+
+	return utils.RenderTable(w, headers, rows)
 }

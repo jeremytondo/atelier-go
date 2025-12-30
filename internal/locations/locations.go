@@ -76,10 +76,8 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 
 // PrintTable formats and prints the locations to the provided writer in a table format.
 func PrintTable(w io.Writer, locs []Location) error {
-	tw := utils.NewTableWriter(w)
-	if _, err := fmt.Fprintln(tw, "SOURCE\tNAME\tPATH\tACTIONS"); err != nil {
-		return fmt.Errorf("error writing header: %w", err)
-	}
+	headers := []string{"SOURCE", "NAME", "PATH", "ACTIONS"}
+	var rows [][]string
 
 	for _, loc := range locs {
 		actionCount := len(loc.Actions)
@@ -87,13 +85,8 @@ func PrintTable(w io.Writer, locs []Location) error {
 		if actionCount > 0 {
 			actionStr = fmt.Sprintf("%d", actionCount)
 		}
+		rows = append(rows, []string{loc.Source, loc.Name, loc.Path, actionStr})
+	}
 
-		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", loc.Source, loc.Name, loc.Path, actionStr); err != nil {
-			return fmt.Errorf("error writing row: %w", err)
-		}
-	}
-	if err := tw.Flush(); err != nil {
-		return fmt.Errorf("error flushing writer: %w", err)
-	}
-	return nil
+	return utils.RenderTable(w, headers, rows)
 }

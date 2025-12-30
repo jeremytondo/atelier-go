@@ -32,17 +32,6 @@ However, there are critical performance risks related to filesystem operations, 
 **Impact:** It is impossible to unit test `List` or the `Manager` logic without mocking the filesystem or having `zoxide` installed.
 **Recommendation:** Refactor `List` to accept a `Manager` or a list of `Provider` interfaces. The CLI layer (`internal/cli`) should be responsible for wiring up the concrete providers.
 
-### 3.2. Fragile UI Input Parsing
-**File:** `internal/ui/fzf.go`
-**Issue:** The `Select` function attempts to detect keypresses by checking if the output *starts* with the key string.
-**Impact:** If a selected item string happens to start with the same characters as a keybinding (e.g., key "a" and item "apple"), the parsing may be ambiguous or incorrect.
-**Recommendation:** Use a safe delimiter (like a null byte `\0` or a rare character) in the `fzf` `--bind` argument (e.g., `print(key)+put(\0)+accept`) to strictly separate the metadata from the selection.
-
-### 3.3. Code Duplication
-**Files:** `internal/locations/locations.go`, `internal/sessions/sessions.go`
-**Issue:** Both files implement nearly identical `PrintTable` logic.
-**Recommendation:** Move the table printing logic to `internal/ui` or `internal/utils` as a generic function or a dedicated `TablePrinter` type.
-
 ## 4. Nitpicks & Idioms
 
 *   **Error Handling**: In `internal/locations/projects.go`, errors during config loading are silently ignored (`continue`). While this prevents a crash, it leaves the user unaware of broken config files.
@@ -72,11 +61,11 @@ However, there are critical performance risks related to filesystem operations, 
   - [x] Centralize configuration loading in `internal/config`.
   - [x] Switch to unified YAML structure (`config.yaml` and `<hostname>.yaml`).
   - [x] Optimize Viper usage (single instance, manual merging).
-- [ ] **Consolidate UI Components**
-  - [ ] Create a generic `PrintTable` function in `internal/ui` or `internal/utils`.
-  - [ ] Refactor `locations` and `sessions` to use the shared table rendering logic.
-- [ ] **Harden UI Input Parsing**
-  - [ ] Update `Select` in `internal/ui/fzf.go` to use a safe delimiter for key detection instead of `HasPrefix`.
+- [x] **Consolidate UI Components**
+  - [x] Create a generic `RenderTable` function in `internal/utils`.
+  - [x] Refactor `locations` and `sessions` to use the shared table rendering logic.
+- [x] **Harden UI Input Parsing**
+  - [x] Update `Select` in `internal/ui/fzf.go` to use a safe delimiter for key detection instead of `HasPrefix`.
 
 ## Implementation Notes
 
@@ -90,4 +79,7 @@ We refactored `locations.Manager` to accept a variadic list of `Provider` interf
 Configuration loading has been centralized in `internal/config`. We moved from multiple TOML files to a unified YAML structure (`config.yaml` and `<hostname>.yaml`). Viper usage was optimized by instantiating it once and manually merging projects to avoid slice-replacement issues.
 
 ### UI & UX
-The `fzf` integration currently relies on string prefix matching which can be ambiguous if project names or paths share common prefixes. A delimited format (e.g., using a null byte or a specific separator) will make result parsing more robust.
+The `fzf` integration has been hardened to use the `--expect` flag, which provides a clean separation between keybindings and selected content. Instead of fragile string prefix matching, we now use line-based parsing of the `fzf` output, where the first line contains the triggered key and the subsequent lines contain the selected item(s). This ensures robust input handling even when item names overlap with key names.
+
+### UI Consolidation
+We introduced a generic `utils.RenderTable` function that accepts column headers and rows of data. This allowed us to eliminate duplicate table formatting logic across the `locations` and `sessions` packages. The function handles consistent padding and alignment, providing a unified look and feel for all list outputs while simplifying the domain-specific code.
