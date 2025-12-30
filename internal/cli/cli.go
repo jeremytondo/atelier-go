@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"atelier-go/internal/config"
 	"atelier-go/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -28,12 +29,18 @@ func newRootCmd() *cobra.Command {
 		Version: Version,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Default behavior: UI handles defaults (showing everything)
-			mgr, err := setupLocationManager(false, false)
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
+				os.Exit(1)
+			}
+
+			mgr, err := setupLocationManager(cfg, false, false)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-			if err := ui.Run(cmd.Context(), mgr); err != nil {
+			if err := ui.Run(cmd.Context(), mgr, cfg); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}

@@ -35,6 +35,16 @@ I was inspired by the [Ghostty](https://ghostty.org/) terminal's dedication to n
 
 Atelier Go looks for configuration in `~/.config/atelier-go/`.
 
+### General Settings
+
+You can define global settings like your preferred editor at the top of `config.yaml`.
+
+```yaml
+editor: "nvim" # The command used for the "Open Editor" secondary action
+```
+
+*   **`editor`**: The command used to open folders (e.g., `nvim`, `vim`, `code`). If not set, it defaults to the `$EDITOR` environment variable, then `vim`.
+
 ### Projects
 
 You can define projects by creating a `config.yaml` file in `~/.config/atelier-go/`.
@@ -74,7 +84,19 @@ atelier-go hostname
 
 Running `atelier-go` without arguments (or using the `ui` command) opens an interactive `fzf` window.
 
-*   **Default View**: Shows everything (Projects + Zoxide).
+#### Triggers
+
+Atelier Go uses a dual-trigger system to launch different actions depending on the location type:
+
+| Location Type | Primary (`Enter`) | Secondary (`Alt-Enter`) |
+| :--- | :--- | :--- |
+| **Folder** (Zoxide) | Open Shell | Open Editor |
+| **Project** (Configured) | Run Default Action* | Open Action Menu |
+
+*\*Default Action is the first action defined in the project configuration. If no actions are defined, it falls back to a shell.*
+
+#### Filters
+
 *   **`atelier-go ui --projects`**: Filter to just your defined projects.
 *   **`atelier-go ui --zoxide`**: Filter to just your `zoxide` directories.
 

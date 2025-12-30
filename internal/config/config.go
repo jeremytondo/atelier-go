@@ -26,6 +26,7 @@ type Action struct {
 // Config represents the application configuration.
 type Config struct {
 	Projects []Project `mapstructure:"projects"`
+	Editor   string    `mapstructure:"editor"`
 }
 
 // LoadConfig loads the configuration from the config directory.
@@ -98,6 +99,17 @@ func mergeProjects(global, host []Project) []Project {
 	}
 
 	return merged
+}
+
+// GetEditor returns the configured editor or fallbacks.
+func (c *Config) GetEditor() string {
+	if c.Editor != "" {
+		return c.Editor
+	}
+	if ed := os.Getenv("EDITOR"); ed != "" {
+		return ed
+	}
+	return "vim"
 }
 
 // GetConfigDir returns the configuration directory respecting XDG_CONFIG_HOME.

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"atelier-go/internal/config"
 	"atelier-go/internal/ui"
 	"fmt"
 	"os"
@@ -17,12 +18,18 @@ func newUICmd() *cobra.Command {
 		Aliases: []string{"start"},
 		Short:   "Start the interactive UI with custom options",
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr, err := setupLocationManager(showProjects, showZoxide)
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
+				os.Exit(1)
+			}
+
+			mgr, err := setupLocationManager(cfg, showProjects, showZoxide)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-			if err := ui.Run(cmd.Context(), mgr); err != nil {
+			if err := ui.Run(cmd.Context(), mgr, cfg); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
