@@ -108,7 +108,7 @@ func runSelection(locs []locations.Location) (*WorkflowResult, error) {
 			actionMap[shellLabel] = actEntry{cmd: "", name: ""}
 
 			for _, act := range item.Actions {
-				label := fmt.Sprintf("%s (%s)", act.Name, act.Command)
+				label := act.Name
 				actionChoices = append(actionChoices, label)
 				actionMap[label] = actEntry{cmd: act.Command, name: sessions.Sanitize(act.Name)}
 			}
