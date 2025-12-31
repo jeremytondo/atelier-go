@@ -14,8 +14,7 @@ var ErrCancelled = errors.New("selection cancelled")
 // Select opens fzf with the provided items and returns the selected item and the key pressed.
 // If expects is provided, fzf will print the key pressed as the first line.
 func Select(items []string, header string, prompt string, expects []string) (string, string, error) {
-	// Added --height=40% to match legacy behavior and potentially fix cursor issues.
-	// Switched from --expect to --bind to avoid potential Esc key handling issues.
+	// Use 40% height for fzf and bind esc to abort for better terminal integration.
 	args := []string{
 		"--ansi",
 		"--no-sort",

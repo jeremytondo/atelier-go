@@ -14,7 +14,7 @@ import (
 // Run executes the interactive UI.
 // It fetches locations using the provided manager, prompts the user, and attaches to a session.
 func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error {
-	// 1. Fetch Locations
+	// Fetch locations
 	locs, err := mgr.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch locations: %w", err)
@@ -25,7 +25,7 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 		return nil
 	}
 
-	// 2. Interactive Selection
+	// Interactive selection
 	result, err := runSelection(locs, cfg)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 		return nil
 	}
 
-	// 3. Attach to Session
+	// Attach to session
 	sessionManager := sessions.NewManager()
 	fmt.Printf("Attaching to session '%s' in %s\n", result.SessionName, result.Path)
 	if err := sessionManager.Attach(result.SessionName, result.Path, result.CommandArgs...); err != nil {

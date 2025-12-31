@@ -37,7 +37,7 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	// 1. Load global config
+	// Load global config
 	vGlobal := viper.New()
 	vGlobal.SetConfigType("yaml")
 	vGlobal.AddConfigPath(configDir)
@@ -54,7 +54,7 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
 
-	// 2. Load host-specific config
+	// Load host-specific config
 	hostname, _ := utils.GetHostname()
 	if hostname != "" {
 		vHost := viper.New()

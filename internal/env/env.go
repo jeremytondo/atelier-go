@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// BuildInteractiveWrapper wraps a command to run inside an interactive login shell.
-// This ensures that the user's full environment (profiles, rc files) is loaded.
+// BuildInteractiveWrapper wraps a command to run inside an interactive login shell,
+// ensuring that the user's full environment (profiles, rc files) is loaded.
 func BuildInteractiveWrapper(shell, cmd string) []string {
 	if cmd == "" {
 		// Just launch the shell as a login shell

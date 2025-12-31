@@ -32,13 +32,13 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 			continue
 		}
 
-		// 1. Expand path
+		// Expand path
 		expandedPath, err := utils.ExpandPath(proj.Path)
 		if err != nil {
 			expandedPath = proj.Path
 		}
 
-		// 2. Validate path exists
+		// Validate path exists
 		if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
 			// Skip projects that don't exist on the current machine
 			continue

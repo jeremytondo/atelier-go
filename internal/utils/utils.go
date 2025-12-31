@@ -79,13 +79,13 @@ func GetCanonicalPath(path string) (string, error) {
 		return "", nil
 	}
 
-	// 1. Get absolute path
+	// Get absolute path
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return path, err
 	}
 
-	// 2. Resolve symlinks
+	// Resolve symlinks
 	resolved, err := filepath.EvalSymlinks(abs)
 	if err != nil {
 		return abs, nil // Return absolute path if resolution fails
