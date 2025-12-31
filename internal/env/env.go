@@ -5,9 +5,55 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
+
+// ConfigurePath ensures that the directory containing the current executable
+// and other common user binary locations are in the PATH.
+func ConfigurePath() {
+	path := os.Getenv("PATH")
+	paths := filepath.SplitList(path)
+	pathMap := make(map[string]bool)
+	for _, p := range paths {
+		pathMap[p] = true
+	}
+
+	var newPaths []string
+
+	// 1. Add the directory of the current executable
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		if !pathMap[exeDir] {
+			newPaths = append(newPaths, exeDir)
+			pathMap[exeDir] = true
+		}
+	}
+
+	// 2. Add common user binary locations
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		locals := []string{
+			filepath.Join(home, ".local", "bin"),
+			filepath.Join(home, "bin"),
+			filepath.Join(home, "go", "bin"),
+		}
+		for _, p := range locals {
+			if !pathMap[p] {
+				if _, err := os.Stat(p); err == nil {
+					newPaths = append(newPaths, p)
+					pathMap[p] = true
+				}
+			}
+		}
+	}
+
+	if len(newPaths) > 0 {
+		newPath := strings.Join(append(newPaths, paths...), string(os.PathListSeparator))
+		os.Setenv("PATH", newPath)
+	}
+}
 
 // BuildInteractiveWrapper wraps a command to run inside an interactive login shell,
 // ensuring that the user's full environment (profiles, rc files) is loaded.
