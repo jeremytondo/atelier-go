@@ -39,11 +39,13 @@ func NewManager() *Manager {
 
 // Resolve converts a location and optional action into a concrete Target.
 func (m *Manager) Resolve(loc locations.Location, actionName string, shell string, editor string) (*Target, error) {
+	sanitizedAction := Sanitize(actionName)
+
 	if loc.Source == "Project" {
 		// If actionName is provided, look it up
-		if actionName != "" {
+		if actionName != "" && sanitizedAction != "shell" {
 			for _, act := range loc.Actions {
-				if Sanitize(act.Name) == Sanitize(actionName) {
+				if Sanitize(act.Name) == sanitizedAction {
 					return &Target{
 						Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
 						Path:    loc.Path,
@@ -54,24 +56,31 @@ func (m *Manager) Resolve(loc locations.Location, actionName string, shell strin
 			return nil, fmt.Errorf("action %q not found in project %q", actionName, loc.Name)
 		}
 
-		// No actionName, use default action (first one) or shell
-		if len(loc.Actions) > 0 {
-			act := loc.Actions[0]
+		// If "shell" was explicitly requested, or no action was provided and no actions exist
+		if sanitizedAction == "shell" || len(loc.Actions) == 0 {
 			return &Target{
-				Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
+				Name:    Sanitize(loc.Name),
 				Path:    loc.Path,
-				Command: env.BuildInteractiveWrapper(shell, act.Command),
+				Command: env.BuildInteractiveWrapper(shell, ""),
 			}, nil
 		}
-	} else {
-		// Zoxide / Folder
-		if actionName == "editor" {
-			return &Target{
-				Name:    Sanitize(loc.Name) + ":editor",
-				Path:    loc.Path,
-				Command: env.BuildInteractiveWrapper(shell, editor+" ."),
-			}, nil
-		}
+
+		// No actionName (and not "shell"), use default action (first one)
+		act := loc.Actions[0]
+		return &Target{
+			Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
+			Path:    loc.Path,
+			Command: env.BuildInteractiveWrapper(shell, act.Command),
+		}, nil
+	}
+
+	// Zoxide / Folder
+	if sanitizedAction == "editor" {
+		return &Target{
+			Name:    Sanitize(loc.Name) + ":editor",
+			Path:    loc.Path,
+			Command: env.BuildInteractiveWrapper(shell, editor+" ."),
+		}, nil
 	}
 
 	// Default: Open Shell

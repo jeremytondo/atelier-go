@@ -117,7 +117,7 @@ func showActionMenu(item locations.Location, shell string, editor string) (*sess
 	// Add Shell option
 	shellLabel := "Shell"
 	actionChoices = append(actionChoices, shellLabel)
-	actionMap[shellLabel] = actEntry{name: ""}
+	actionMap[shellLabel] = actEntry{name: "shell"}
 
 	actSelection, _, err := Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ", nil)
 	if err != nil {
