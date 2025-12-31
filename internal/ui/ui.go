@@ -81,7 +81,7 @@ func runSelection(locs []locations.Location, cfg *config.Config) (*sessions.Targ
 
 	if secondary {
 		if item.Source == "Project" {
-			return showActionMenu(item, shell, cfg.GetEditor())
+			return showActionMenu(item, shell, cfg.GetEditor(), sessionManager)
 		}
 		// Folder Secondary -> Editor
 		return sessionManager.Resolve(item, "editor", shell, cfg.GetEditor())
@@ -91,10 +91,9 @@ func runSelection(locs []locations.Location, cfg *config.Config) (*sessions.Targ
 	return sessionManager.Resolve(item, "", shell, cfg.GetEditor())
 }
 
-func showActionMenu(item locations.Location, shell string, editor string) (*sessions.Target, error) {
+func showActionMenu(item locations.Location, shell string, editor string, sessionManager *sessions.Manager) (*sessions.Target, error) {
 	if len(item.Actions) == 0 {
 		// If no actions, just return shell
-		sessionManager := sessions.NewManager()
 		return sessionManager.Resolve(item, "", shell, editor)
 	}
 
@@ -127,7 +126,6 @@ func showActionMenu(item locations.Location, shell string, editor string) (*sess
 		return nil, err
 	}
 
-	sessionManager := sessions.NewManager()
 	if entry, ok := actionMap[actSelection]; ok {
 		return sessionManager.Resolve(item, entry.name, shell, editor)
 	}

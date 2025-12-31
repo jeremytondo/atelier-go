@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"atelier-go/internal/config"
@@ -82,7 +83,7 @@ func (m *Manager) Find(ctx context.Context, name string) (*Location, error) {
 	}
 
 	for _, loc := range locs {
-		if loc.Name == name {
+		if strings.EqualFold(loc.Name, name) {
 			return &loc, nil
 		}
 	}

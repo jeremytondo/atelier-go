@@ -64,25 +64,28 @@ Update `internal/cli/sessions.go` to handle new flags for the `attach` command.
   - `--folder`, `-f`: Path to a generic folder.
 - **Logic**:
   - If flags are present, resolve the location (via `Find` or path) and action (via `Resolve`).
-  - Fallback to existing positional argument behavior if no flags are provided.
+  - **Decision**: Removed legacy positional argument support in favor of a cleaner flag-based CLI for the `attach` command.
 
 ### 4. Update UI
 Refactor `internal/ui/ui.go` to use the new `sessions.Resolve` function, removing duplicated logic.
 
 ## Checklist
 
-- [ ] Refactor `ui` logic to `sessions` package
-    - [ ] Create `sessions.Target` struct
-    - [ ] Create `sessions.Resolve` function
-- [ ] Enhance `Location Manager`
-    - [ ] Add `Find(name string)` to `Manager`
-- [ ] Update `cli/sessions.go`
-    - [ ] Add flags: `--project`, `--action`, `--folder`
-    - [ ] Implement logic to use `Find` and `Resolve`
-- [ ] Update `ui/ui.go`
-    - [ ] Use `sessions.Resolve` instead of inline logic
+- [x] Refactor `ui` logic to `sessions` package
+    - [x] Create `sessions.Target` struct
+    - [x] Create `sessions.Resolve` function
+- [x] Enhance `Location Manager`
+    - [x] Add `Find(name string)` to `Manager`
+- [x] Update `cli/sessions.go`
+    - [x] Add flags: `--project`, `--action`, `--folder`
+    - [x] Implement logic to use `Find` and `Resolve`
+- [x] Update `ui/ui.go`
+    - [x] Use `sessions.Resolve` instead of inline logic
 
 ## Implementation Notes
 
+- **"Shell" Reserved Action**: "Shell" is now a reserved action name in `sessions.Resolve`. This allows explicitly launching a shell for projects that have defined actions, which would otherwise default to their first defined action.
+- **Legacy Arguments**: Legacy positional argument support was removed to simplify the CLI interface and reduce ambiguity between project names and paths.
+- **Architecture**: The logic was consolidated into `sessions.Manager.Resolve`. The `internal/cli/sessions.go` file was refactored into smaller, focused functions to improve readability and maintainability.
 - Ensure that the session name generation is consistent with how the UI does it currently.
 - The `Find` method in `Location Manager` should probably prioritize exact matches on project names.
