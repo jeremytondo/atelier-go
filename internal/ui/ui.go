@@ -141,16 +141,20 @@ func showActionMenu(item locations.Location, shell string) (*WorkflowResult, err
 	actionMap := make(map[string]actEntry)
 	var actionChoices []string
 
-	// Add Shell option
-	shellLabel := "Shell (Default)"
-	actionChoices = append(actionChoices, shellLabel)
-	actionMap[shellLabel] = actEntry{cmd: "", name: ""}
-
-	for _, act := range item.Actions {
+	// Add actions
+	for i, act := range item.Actions {
 		label := act.Name
+		if i == 0 {
+			label = fmt.Sprintf("%s (Default)", label)
+		}
 		actionChoices = append(actionChoices, label)
 		actionMap[label] = actEntry{cmd: act.Command, name: sessions.Sanitize(act.Name)}
 	}
+
+	// Add Shell option
+	shellLabel := "Shell"
+	actionChoices = append(actionChoices, shellLabel)
+	actionMap[shellLabel] = actEntry{cmd: "", name: ""}
 
 	actSelection, _, err := Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ", nil)
 	if err != nil {
