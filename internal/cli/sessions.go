@@ -1,9 +1,15 @@
 package cli
 
 import (
+	"atelier-go/internal/config"
+	"atelier-go/internal/env"
+	"atelier-go/internal/locations"
 	"atelier-go/internal/sessions"
+	"atelier-go/internal/utils"
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -22,27 +28,76 @@ func newSessionsCmd() *cobra.Command {
 }
 
 func newSessionsAttachCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "attach [name] [path]",
-		Short: "Attach to a session",
-		Args:  cobra.MinimumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			name := args[0]
-			path := args[1]
+	var projectFlag string
+	var actionFlag string
+	var folderFlag string
 
-			// Optional command args
-			var cmdArgs []string
-			if len(args) > 2 {
-				cmdArgs = args[2:]
+	cmd := &cobra.Command{
+		Use:   "attach",
+		Short: "Attach to a session",
+		Long:  "Attach to a session using --project or --folder. If using --project, you can optionally specify an --action.",
+		Run: func(cmd *cobra.Command, args []string) {
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
+				os.Exit(1)
 			}
 
-			manager := sessions.NewManager()
-			if err := manager.Attach(name, path, cmdArgs...); err != nil {
+			target, err := resolveTarget(cmd.Context(), cfg, projectFlag, folderFlag, actionFlag)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+
+			sessionManager := sessions.NewManager()
+			if err := sessionManager.Attach(target.Name, target.Path, target.Command...); err != nil {
 				fmt.Fprintf(os.Stderr, "error attaching to session: %v\n", err)
 				os.Exit(1)
 			}
 		},
 	}
+
+	cmd.Flags().StringVarP(&projectFlag, "project", "p", "", "Project name to attach to")
+	cmd.Flags().StringVarP(&actionFlag, "action", "a", "", "Action name to run (optional, used with --project)")
+	cmd.Flags().StringVarP(&folderFlag, "folder", "f", "", "Folder path to attach to")
+
+	return cmd
+}
+
+func resolveTarget(ctx context.Context, cfg *config.Config, projectName, folderPath, actionName string) (*sessions.Target, error) {
+	var loc *locations.Location
+
+	if projectName != "" {
+		locMgr, err := setupLocationManager(cfg, true, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup location manager: %w", err)
+		}
+		l, err := locMgr.Find(ctx, projectName)
+		if err != nil {
+			return nil, err
+		}
+		loc = l
+	} else if folderPath != "" {
+		absPath, err := utils.ExpandPath(folderPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to expand path: %w", err)
+		}
+		absPath, err = filepath.Abs(absPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get absolute path: %w", err)
+		}
+
+		loc = &locations.Location{
+			Name:   filepath.Base(absPath),
+			Path:   absPath,
+			Source: "Folder",
+		}
+	} else {
+		return nil, fmt.Errorf("must provide --project or --folder")
+	}
+
+	shell := env.DetectShell()
+	return sessions.NewManager().Resolve(*loc, actionName, shell, cfg.GetEditor())
 }
 
 func newSessionsKillCmd() *cobra.Command {

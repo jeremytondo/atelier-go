@@ -108,7 +108,8 @@ You can also manage your persistent `zmx` sessions directly from the CLI:
 
 *   **List sessions**: `atelier-go sessions list`
 *   **Kill a session**: `atelier-go sessions kill <name>`
-*   **Manual attach**: `atelier-go sessions attach <name> <path> [command]`
+*   **Attach to project**: `atelier-go sessions attach --project <name> [--action <action>]`
+*   **Attach to folder**: `atelier-go sessions attach --folder <path>`
 
 ### Locations
 
