@@ -104,12 +104,15 @@ Atelier Go uses a dual-trigger system to launch different actions depending on t
 
 ### Sessions
 
-You can also manage your persistent `zmx` sessions directly from the CLI:
+If you prefer using the CLI over the interactive UI, you can manage your persistent `zmx` sessions directly:
 
 *   **List sessions**: `atelier-go sessions list`
 *   **Kill a session**: `atelier-go sessions kill <name>`
-*   **Attach to project**: `atelier-go sessions attach --project <name> [--action <action>]`
-*   **Attach to folder**: `atelier-go sessions attach --folder <path>`
+*   **Attach to a project**: `atelier-go sessions attach -p my-project`
+*   **Run a specific action**: `atelier-go sessions attach -p my-project -a "Run Server"`
+*   **Jump into a folder**: `atelier-go sessions attach -f ~/some/path`
+
+You can even use the reserved `--action Shell` to bypass a project's default action and just open a shell.
 
 ### Locations
 
