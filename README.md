@@ -40,7 +40,7 @@ Atelier Go looks for configuration in `~/.config/atelier-go/`.
 You can define global settings like your preferred editor at the top of `config.yaml`.
 
 ```yaml
-editor: "nvim" # The command used for the "Open Editor" secondary action
+editor: "nvim"
 ```
 
 *   **`editor`**: The command used to open folders (e.g., `nvim`, `vim`, `code`). If not set, it defaults to the `$EDITOR` environment variable, then `vim`.
@@ -69,11 +69,13 @@ projects:
 ### Host-Specific Projects
 
 If you work across multiple machines, you can define projects that only show up on a specific host. Create a YAML file named after the host in the same directory:
+
 `~/.config/atelier-go/<hostname>.yaml`
 
 Settings in the host-specific file will be merged with the global `config.yaml`.
 
 To see what hostname Atelier Go is using for your current host, run:
+
 ```bash
 atelier-go hostname
 ```
@@ -122,7 +124,9 @@ atelier-go locations --projects
 
 ## Remote Work
 
-Atelier Go is designed to make working on remote machines feel native. While you can use `RemoteCommand` in your SSH config, the best way to use it is by setting up a local alias. This allows you to pass flags and commands (like `ag sessions list`) to the remote instance just like you would locally.
+Atelier Go is designed to make working on remote machines feel native. One interesting way
+to set this up is by running it via ssh. This allows you to easily work with projects
+on remote machines.
 
 ### 1. Remote Server Setup
 
@@ -149,7 +153,7 @@ Host ag
 Add the following alias to your local shell configuration (e.g., `~/.zshrc` or `~/.bashrc`):
 
 ```bash
-alias ag='ssh -t agr -- /home/username/.local/bin/atelier-go'
+alias agr='ssh -t ag -- /home/username/.local/bin/atelier-go'
 ```
 
 *   **`-t`**: Forces a PTY allocation, which is required for the `fzf` UI.
