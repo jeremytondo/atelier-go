@@ -2,6 +2,8 @@
 package sessions
 
 import (
+	"atelier-go/internal/env"
+	"atelier-go/internal/locations"
 	"atelier-go/internal/utils"
 	"bufio"
 	"bytes"
@@ -20,12 +22,73 @@ type Session struct {
 	Path string
 }
 
+// Target represents a resolved session target ready for attachment.
+type Target struct {
+	Name    string
+	Path    string
+	Command []string
+}
+
 // Manager handles interaction with the zmx session manager.
 type Manager struct{}
 
 // NewManager creates a new session manager.
 func NewManager() *Manager {
 	return &Manager{}
+}
+
+// Resolve converts a location and optional action into a concrete Target.
+func (m *Manager) Resolve(loc locations.Location, actionName string, shell string, editor string) (*Target, error) {
+	sanitizedAction := Sanitize(actionName)
+
+	if loc.Source == "Project" {
+		// If actionName is provided, look it up
+		if actionName != "" && sanitizedAction != "shell" {
+			for _, act := range loc.Actions {
+				if Sanitize(act.Name) == sanitizedAction {
+					return &Target{
+						Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
+						Path:    loc.Path,
+						Command: env.BuildInteractiveWrapper(shell, act.Command),
+					}, nil
+				}
+			}
+			return nil, fmt.Errorf("action %q not found in project %q", actionName, loc.Name)
+		}
+
+		// If "shell" was explicitly requested, or no action was provided and no actions exist
+		if sanitizedAction == "shell" || len(loc.Actions) == 0 {
+			return &Target{
+				Name:    Sanitize(loc.Name),
+				Path:    loc.Path,
+				Command: env.BuildInteractiveWrapper(shell, ""),
+			}, nil
+		}
+
+		// No actionName (and not "shell"), use default action (first one)
+		act := loc.Actions[0]
+		return &Target{
+			Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
+			Path:    loc.Path,
+			Command: env.BuildInteractiveWrapper(shell, act.Command),
+		}, nil
+	}
+
+	// Zoxide / Folder
+	if sanitizedAction == "editor" {
+		return &Target{
+			Name:    Sanitize(loc.Name) + ":editor",
+			Path:    loc.Path,
+			Command: env.BuildInteractiveWrapper(shell, editor+" ."),
+		}, nil
+	}
+
+	// Default: Open Shell
+	return &Target{
+		Name:    Sanitize(loc.Name),
+		Path:    loc.Path,
+		Command: env.BuildInteractiveWrapper(shell, ""),
+	}, nil
 }
 
 // Attach connects to an existing zmx session or creates a new one with the given name.

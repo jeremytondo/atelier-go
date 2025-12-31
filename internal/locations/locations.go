@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"atelier-go/internal/config"
@@ -72,6 +73,22 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 	}
 
 	return allLocations, nil
+}
+
+// Find searches for a location by name (case-insensitive).
+func (m *Manager) Find(ctx context.Context, name string) (*Location, error) {
+	locs, err := m.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, loc := range locs {
+		if strings.EqualFold(loc.Name, name) {
+			return &loc, nil
+		}
+	}
+
+	return nil, fmt.Errorf("location %q not found", name)
 }
 
 // PrintTable formats and prints the locations to the provided writer in a table format.
