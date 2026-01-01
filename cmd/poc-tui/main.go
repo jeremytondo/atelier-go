@@ -11,6 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Icon constants (Nerd Font)
+const (
+	iconFolder  = "\uea83"
+	iconProject = "\uf503"
+	iconSearch  = "\uf002"
+)
+
 // Visual constants for the TUI
 var (
 	windowStyle = lipgloss.NewStyle().
@@ -46,9 +53,9 @@ type item struct {
 }
 
 func (i item) Title() string {
-	icon := "\uea83" // Folder icon
+	icon := iconFolder
 	if i.isProject {
-		icon = "\uf503" // Project icon
+		icon = iconProject
 	}
 	// Return the formatted title with icon
 	return fmt.Sprintf("%s %s", icon, i.title)
@@ -73,12 +80,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		style = d.Styles.SelectedTitle
 		if !d.focused {
 			// Dim the selection color if the panel is not currently focused
-			style = style.Copy().Foreground(lipgloss.Color("240")).BorderLeftForeground(lipgloss.Color("240"))
+			style = style.Foreground(lipgloss.Color("240")).BorderLeftForeground(lipgloss.Color("240"))
 		}
 	} else {
 		style = d.Styles.NormalTitle
 		if i.isProject {
-			style = style.Copy().Foreground(projectBlue)
+			style = style.Foreground(projectBlue)
 		}
 	}
 
@@ -149,7 +156,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Go back to project list
 				m.focus = focusLeft
 				m.filterInput.SetValue(m.lastLeftFilter)
-				m.filterInput.Prompt = "Project ➜ "
+				m.filterInput.Prompt = "Project " + iconSearch + " "
 				m.actions.SetFilterText("")
 				m.lastRightFilter = ""
 				cmds = append(cmds, m.updateActions())
@@ -173,7 +180,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focus = focusRight
 					m.lastLeftFilter = m.filterInput.Value()
 					m.filterInput.SetValue("")
-					m.filterInput.Prompt = "Action ➜ "
+					m.filterInput.Prompt = "Action " + iconSearch + " "
 					m.actions.Select(0)
 					return m, nil
 				}
@@ -368,7 +375,7 @@ func main() {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.Focus()
-	ti.Prompt = " " // Search icon
+	ti.Prompt = iconSearch + " "
 	ti.CharLimit = 64
 	ti.Width = 50
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
@@ -402,4 +409,11 @@ func main() {
 	} else {
 		fmt.Println("\nSelection Cancelled")
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
