@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	docStyle   = lipgloss.NewStyle().Margin(1, 2)
 	titleStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color("62")).
 			Foreground(lipgloss.Color("230")).
@@ -191,7 +190,6 @@ func (m model) View() string {
 	header := titleStyle.Render(title)
 	search := "\n" + m.filterInput.View() + "\n"
 
-	// Inner content without margin
 	inner := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
@@ -199,15 +197,12 @@ func (m model) View() string {
 		m.list.View(),
 	)
 
-	// Wrap in window style (border, padding, fixed width)
 	content := windowStyle.Render(inner)
 
-	// If we haven't received a size yet, just render normally
 	if m.terminalWidth == 0 {
 		return content
 	}
 
-	// Center the entire window in the terminal
 	return lipgloss.Place(m.terminalWidth, m.terminalHeight,
 		lipgloss.Center, lipgloss.Center,
 		content,
