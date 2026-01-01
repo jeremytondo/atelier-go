@@ -14,7 +14,7 @@ It allows you to quickly jump into projects and apps, making it easier to work w
   - [Interactive UI](#interactive-ui)
   - [Sessions](#sessions)
   - [Locations](#locations)
-- [Remote Work: Environment Bootstrapping](#remote-work-environment-bootstrapping)
+- [Remote Work](#remote-work)
 
 ## About
 
@@ -128,7 +128,7 @@ atelier-go locations --projects
 
 ## Remote Work
 
-Atelier Go is designed to make working on remote machines feel native. One interesting way
+Atelier Go is designed to make working on remote machines feel seamless. One interesting way
 to set this up is by running it via ssh. This allows you to easily work with projects
 on remote machines.
 
@@ -154,7 +154,7 @@ Host ag
 
 ### 3. Local Alias
 
-Add the following alias to your local shell configuration (e.g., `~/.zshrc` or `~/.bashrc`):
+Add an alias to your local shell configuration (e.g., `~/.zshrc` or `~/.bashrc`):
 
 ```bash
 alias agr='ssh -t ag -- /home/username/.local/bin/atelier-go'
