@@ -11,36 +11,54 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Visual constants for the TUI
 var (
-	titleStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("62")).
-			Foreground(lipgloss.Color("230")).
-			Padding(0, 1)
 	windowStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62")).
 			Padding(1).
-			Width(60)
+			Width(100)
 	projectBlue = lipgloss.Color("#89b4fa")
+
+	// Panel layout styles
+	leftPanelStyle = lipgloss.NewStyle().
+			Width(60).
+			Border(lipgloss.NormalBorder(), false, true, false, false). // Vertical divider
+			BorderForeground(lipgloss.Color("240"))
+
+	rightPanelStyle = lipgloss.NewStyle().
+			Width(35).
+			PaddingLeft(2)
+
+	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+
+	searchInputStyle = lipgloss.NewStyle().
+				Bold(true).
+				MarginBottom(1)
 )
 
+// item represents a single selectable entry in our lists (Project, Folder, or Action)
 type item struct {
 	title     string
 	isProject bool
+	actions   []list.Item
 }
 
 func (i item) Title() string {
-	icon := "\uea83"
+	icon := "\uea83" // Folder icon
 	if i.isProject {
-		icon = "\uf503"
+		icon = "\uf503" // Project icon
 	}
+	// Return the formatted title with icon
 	return fmt.Sprintf("%s %s", icon, i.title)
 }
 func (i item) Description() string { return "" }
 func (i item) FilterValue() string { return i.title }
 
+// itemDelegate handles rendering of list items with custom focusing logic
 type itemDelegate struct {
 	list.DefaultDelegate
+	focused bool // Controls whether the selection indicator is highlighted
 }
 
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
@@ -52,6 +70,10 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	var style lipgloss.Style
 	if index == m.Index() {
 		style = d.Styles.SelectedTitle
+		if !d.focused {
+			// Dim the selection color if the panel is not currently focused
+			style = style.Copy().Foreground(lipgloss.Color("240")).BorderLeftForeground(lipgloss.Color("240"))
+		}
 	} else {
 		style = d.Styles.NormalTitle
 		if i.isProject {
@@ -62,32 +84,53 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprintf(w, style.Render(i.Title()))
 }
 
-type state int
+type focus int
 
 const (
-	stateProjects state = iota
-	stateActions
+	focusLeft focus = iota
+	focusRight
 )
 
+// model holds the state of the entire TUI application
 type model struct {
-	list           list.Model
-	filterInput    textinput.Model
-	choice         string
-	action         string
-	key            string
-	quitting       bool
-	prevFilter     string
-	state          state
-	project        string
-	terminalWidth  int
-	terminalHeight int
+	projects         list.Model
+	projectsDelegate itemDelegate
+	actions          list.Model
+	actionsDelegate  itemDelegate
+	filterInput      textinput.Model
+	focus            focus
+	terminalWidth    int
+	terminalHeight   int
+	quitting         bool
+
+	// Final results to be printed after exit
+	SelectedProject string
+	SelectedAction  string
+
+	// Track filter states for both panels
+	lastLeftFilter  string
+	lastRightFilter string
 }
 
-func (m model) Init() tea.Cmd {
-	return textinput.Blink
+func (m *model) Init() tea.Cmd {
+	// Initialize with cursor blinking and ensure the first item's actions are loaded
+	return tea.Batch(textinput.Blink, m.updateActions())
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// updateActions synchronizes the right panel with the current selection on the left
+func (m *model) updateActions() tea.Cmd {
+	var items []list.Item
+	if sel, ok := m.projects.SelectedItem().(item); ok {
+		if len(sel.actions) > 0 {
+			items = sel.actions
+		} else {
+			items = []list.Item{item{title: "No actions available"}}
+		}
+	}
+	return m.actions.SetItems(items)
+}
+
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -99,102 +142,162 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+
 		case "esc":
-			if m.state == stateActions {
-				m.state = stateProjects
-				m.filterInput.SetValue("")
-				m.list.SetFilterText("")
-				m.prevFilter = ""
+			if m.focus == focusRight {
+				// Go back to project list
+				m.focus = focusLeft
+				m.filterInput.SetValue(m.lastLeftFilter)
 				m.filterInput.Prompt = "Project ➜ "
-				cmd := m.list.SetItems(projectItems)
-				m.list.Select(0)
-				return m, cmd
+				m.actions.SetFilterText("")
+				m.lastRightFilter = ""
+				cmds = append(cmds, m.updateActions())
+				return m, tea.Batch(cmds...)
 			}
 			if m.filterInput.Value() == "" {
 				m.quitting = true
 				return m, tea.Quit
 			}
+			// Clear filter
 			m.filterInput.SetValue("")
-			m.list.SetFilterText("")
-			m.prevFilter = ""
-			m.list.Select(0)
-			return m, nil
-		case "enter":
-			i, ok := m.list.SelectedItem().(item)
-			if !ok {
-				return m, nil
-			}
-			if m.state == stateProjects {
-				m.choice = i.title
-				m.key = "enter"
+			m.projects.SetFilterText("")
+			m.lastLeftFilter = ""
+			cmds = append(cmds, m.updateActions())
+			return m, tea.Batch(cmds...)
+
+		case "enter", "tab":
+			if m.focus == focusLeft {
+				if sel, ok := m.projects.SelectedItem().(item); ok && sel.isProject {
+					// Switch to actions panel
+					m.focus = focusRight
+					m.lastLeftFilter = m.filterInput.Value()
+					m.filterInput.SetValue("")
+					m.filterInput.Prompt = "Action ➜ "
+					m.actions.Select(0)
+					return m, nil
+				}
+				// Folder or non-project selected -> Execute default
+				if sel, ok := m.projects.SelectedItem().(item); ok {
+					m.SelectedProject = sel.title
+					m.SelectedAction = "Default"
+				}
+				m.quitting = true
 				return m, tea.Quit
 			} else {
-				m.action = i.title
+				// In actions panel, Enter selects the action
+				if p, ok := m.projects.SelectedItem().(item); ok {
+					m.SelectedProject = p.title
+				}
+				if a, ok := m.actions.SelectedItem().(item); ok {
+					m.SelectedAction = a.title
+				}
+				m.quitting = true
 				return m, tea.Quit
 			}
-		case "alt+enter":
-			if m.state == stateProjects {
-				i, ok := m.list.SelectedItem().(item)
-				if ok {
-					m.project = i.title
-					m.state = stateActions
-					m.filterInput.SetValue("")
-					m.list.SetFilterText("")
-					m.prevFilter = ""
-					m.filterInput.Prompt = "Action ➜ "
-					cmd := m.list.SetItems(actionItems)
-					m.list.Select(0)
-					return m, cmd
-				}
+
+		case "alt+enter", "ctrl+s":
+			// "Fast" trigger: bypass action menu and use default.
+			// Note: ctrl+enter is omitted as it's unreliable in most terminal emulators.
+			if p, ok := m.projects.SelectedItem().(item); ok {
+				m.SelectedProject = p.title
+				m.SelectedAction = "Default"
 			}
+			m.quitting = true
+			return m, tea.Quit
+
 		case "up", "ctrl+p":
-			m.list.CursorUp()
-			return m, nil
+			if m.focus == focusLeft {
+				m.projects.CursorUp()
+				cmds = append(cmds, m.updateActions())
+			} else {
+				m.actions.CursorUp()
+			}
+			return m, tea.Batch(cmds...)
+
 		case "down", "ctrl+n":
-			m.list.CursorDown()
-			return m, nil
+			if m.focus == focusLeft {
+				m.projects.CursorDown()
+				cmds = append(cmds, m.updateActions())
+			} else {
+				m.actions.CursorDown()
+			}
+			return m, tea.Batch(cmds...)
 		}
+
 	case tea.WindowSizeMsg:
 		m.terminalWidth = msg.Width
 		m.terminalHeight = msg.Height
-		m.list.SetSize(60, 10)
 	}
 
+	// Update Filter Input
 	m.filterInput, cmd = m.filterInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	newFilter := m.filterInput.Value()
-	if newFilter != m.prevFilter {
-		m.list.SetFilterText(newFilter)
-		m.prevFilter = newFilter
-		m.list.Select(0)
+	// Synchronize Filters between Textinput and the active List
+	if m.focus == focusLeft {
+		val := m.filterInput.Value()
+		if val != m.lastLeftFilter {
+			m.projects.SetFilterText(val)
+			m.lastLeftFilter = val
+			m.projects.Select(0)
+			cmds = append(cmds, m.updateActions())
+		}
+	} else {
+		val := m.filterInput.Value()
+		if val != m.lastRightFilter {
+			m.actions.SetFilterText(val)
+			m.lastRightFilter = val
+			m.actions.Select(0)
+		}
 	}
 
-	if _, ok := msg.(tea.KeyMsg); !ok {
-		m.list, cmd = m.list.Update(msg)
+	// Route non-key messages to both lists to keep them reactive
+	if _, isKey := msg.(tea.KeyMsg); !isKey {
+		m.projects, cmd = m.projects.Update(msg)
+		cmds = append(cmds, cmd)
+		m.actions, cmd = m.actions.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	if m.quitting {
 		return ""
 	}
 
-	title := "Atelier Go Unified"
-	if m.state == stateActions {
-		title = fmt.Sprintf("Actions for %s", m.project)
-	}
-	header := titleStyle.Render(title)
-	search := "\n" + m.filterInput.View() + "\n"
+	// Update delegates with current focus state before rendering
+	m.projectsDelegate.focused = (m.focus == focusLeft)
+	m.projects.SetDelegate(m.projectsDelegate)
 
+	m.actionsDelegate.focused = (m.focus == focusRight)
+	m.actions.SetDelegate(m.actionsDelegate)
+
+	search := searchInputStyle.Render(m.filterInput.View())
+
+	// Panels
+	left := leftPanelStyle.Render(m.projects.View())
+
+	// Right panel title styling based on focus
+	actionTitle := "AVAILABLE ACTIONS"
+	if m.focus == focusRight {
+		actionTitle = focusedStyle.Bold(true).Render("SELECT ACTION")
+	}
+
+	right := rightPanelStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			actionTitle,
+			"",
+			m.actions.View(),
+		),
+	)
+
+	// Compose the layout
 	inner := lipgloss.JoinVertical(
 		lipgloss.Left,
-		header,
 		search,
-		m.list.View(),
+		lipgloss.JoinHorizontal(lipgloss.Top, left, right),
 	)
 
 	content := windowStyle.Render(inner)
@@ -203,76 +306,93 @@ func (m model) View() string {
 		return content
 	}
 
+	// Center the window in the terminal
 	return lipgloss.Place(m.terminalWidth, m.terminalHeight,
 		lipgloss.Center, lipgloss.Center,
 		content,
 	)
 }
 
-var (
-	projectItems = []list.Item{
-		item{title: "Atelier Go", isProject: true},
-		item{title: "Bubble Tea", isProject: true},
-		item{title: "Charm", isProject: false},
-		item{title: "Fzf Replacement", isProject: false},
-		item{title: "Golang Project", isProject: false},
-		item{title: "TUI Exploration", isProject: false},
-	}
-	actionItems = []list.Item{
-		item{title: "Default (Shell)", isProject: false},
-		item{title: "Open in Editor", isProject: false},
-		item{title: "Run Tests", isProject: false},
-		item{title: "Build Project", isProject: false},
-	}
-)
-
 func main() {
-	defaultDelegate := list.NewDefaultDelegate()
-	defaultDelegate.ShowDescription = false
-	defaultDelegate.SetSpacing(0)
-	defaultDelegate.Styles.NormalTitle = lipgloss.NewStyle().Padding(0, 0, 0, 1)
-	defaultDelegate.Styles.SelectedTitle = lipgloss.NewStyle().
+	// Sample action template
+	defaultActions := []list.Item{
+		item{title: "Shell", isProject: false},
+		item{title: "Editor", isProject: false},
+		item{title: "Test", isProject: false},
+		item{title: "Build", isProject: false},
+	}
+
+	// Sample project data
+	projectItems := []list.Item{
+		item{title: "atelier-go", isProject: true, actions: defaultActions},
+		item{title: "bubbletea", isProject: true, actions: defaultActions},
+		item{title: "charm-bubbles", isProject: false},
+		item{title: "fzf-core", isProject: false},
+		item{title: "golang-poc", isProject: true, actions: defaultActions},
+		item{title: "tui-exploration", isProject: false},
+	}
+
+	// Setup the shared delegate
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
+	d.SetSpacing(0)
+	d.Styles.NormalTitle = lipgloss.NewStyle().Padding(0, 0, 0, 1)
+	d.Styles.SelectedTitle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, true).
 		BorderLeftForeground(lipgloss.Color("170")).
 		Foreground(lipgloss.Color("170")).
 		Padding(0, 0, 0, 1)
 
-	delegate := itemDelegate{defaultDelegate}
+	delegate := itemDelegate{DefaultDelegate: d}
 
-	l := list.New(projectItems, delegate, 60, 10)
+	// Initialize the panel lists
+	l := list.New(projectItems, delegate, 58, 10)
 	l.SetShowTitle(false)
 	l.SetShowFilter(false)
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(false)
 
+	r := list.New(nil, delegate, 30, 10)
+	r.SetShowTitle(false)
+	r.SetShowFilter(false)
+	r.SetShowStatusBar(false)
+	r.SetShowHelp(false)
+
+	// Initialize the shared filter input
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.Focus()
 	ti.Prompt = "Project ➜ "
 	ti.CharLimit = 64
-	ti.Width = 30
+	ti.Width = 50
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
-	m := model{
-		list:        l,
-		filterInput: ti,
-		state:       stateProjects,
+	m := &model{
+		projects:         l,
+		projectsDelegate: delegate,
+		actions:          r,
+		actionsDelegate:  delegate,
+		filterInput:      ti,
+		focus:            focusLeft,
 	}
 
+	// Start the Bubble Tea program
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	finalModel, err := p.Run()
 	if err != nil {
-		fmt.Println("Error running program:", err)
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	if m, ok := finalModel.(model); ok {
-		if m.action != "" {
-			fmt.Printf("\nProject: %s\nAction: %s\n", m.project, m.action)
-		} else if m.choice != "" {
-			fmt.Printf("\nSelection: %s\n", m.choice)
-		} else {
-			fmt.Println("\nCancelled")
+	// PRINT SELECTIONS AFTER EXIT
+	if m, ok := finalModel.(*model); ok && m.SelectedProject != "" {
+		fmt.Printf("\nSelection: %s\n", m.SelectedProject)
+		if m.SelectedAction != "" {
+			fmt.Printf("Action:    %s\n", m.SelectedAction)
 		}
+	} else {
+		fmt.Println("\nSelection Cancelled")
 	}
 }
