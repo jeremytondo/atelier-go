@@ -16,7 +16,7 @@ var (
 	windowStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62")).
-			Padding(1).
+			Padding(0, 1). // Vertical padding reduced
 			Width(100)
 	projectBlue = lipgloss.Color("#89b4fa")
 
@@ -24,17 +24,18 @@ var (
 	leftPanelStyle = lipgloss.NewStyle().
 			Width(60).
 			Border(lipgloss.NormalBorder(), false, true, false, false). // Vertical divider
-			BorderForeground(lipgloss.Color("240"))
+			BorderForeground(lipgloss.Color("240")).
+			PaddingTop(1) // Add padding back for content when expanded
 
 	rightPanelStyle = lipgloss.NewStyle().
 			Width(35).
-			PaddingLeft(2)
+			PaddingLeft(2).
+			PaddingTop(1)
 
 	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
 
 	searchInputStyle = lipgloss.NewStyle().
-				Bold(true).
-				MarginBottom(1)
+				Padding(1, 0) // Maintain consistent height inside the border
 )
 
 // item represents a single selectable entry in our lists (Project, Folder, or Action)
@@ -276,29 +277,34 @@ func (m *model) View() string {
 
 	search := searchInputStyle.Render(m.filterInput.View())
 
-	// Panels
-	left := leftPanelStyle.Render(m.projects.View())
+	var inner string
+	// Spotlight behavior: only show results if there's text or if we are in the actions pane
+	if m.filterInput.Value() == "" && m.focus == focusLeft {
+		inner = search
+	} else {
+		// Panels
+		left := leftPanelStyle.Render(m.projects.View())
 
-	// Right panel title styling based on focus
-	actionTitle := "AVAILABLE ACTIONS"
-	if m.focus == focusRight {
-		actionTitle = focusedStyle.Bold(true).Render("SELECT ACTION")
+		// Right panel title styling based on focus
+		actionTitle := "AVAILABLE ACTIONS"
+		if m.focus == focusRight {
+			actionTitle = focusedStyle.Bold(true).Render("SELECT ACTION")
+		}
+
+		right := rightPanelStyle.Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				actionTitle,
+				"",
+				m.actions.View(),
+			),
+		)
+
+		inner = lipgloss.JoinVertical(
+			lipgloss.Left,
+			search,
+			lipgloss.JoinHorizontal(lipgloss.Top, left, right),
+		)
 	}
-
-	right := rightPanelStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			actionTitle,
-			"",
-			m.actions.View(),
-		),
-	)
-
-	// Compose the layout
-	inner := lipgloss.JoinVertical(
-		lipgloss.Left,
-		search,
-		lipgloss.JoinHorizontal(lipgloss.Top, left, right),
-	)
 
 	content := windowStyle.Render(inner)
 
@@ -362,10 +368,11 @@ func main() {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.Focus()
-	ti.Prompt = "Project ➜ "
+	ti.Prompt = " " // Search icon
 	ti.CharLimit = 64
 	ti.Width = 50
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
+	ti.TextStyle = lipgloss.NewStyle().Bold(true)
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
 	m := &model{
