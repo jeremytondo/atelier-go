@@ -6,6 +6,7 @@ import (
 	"atelier-go/internal/env"
 	"atelier-go/internal/locations"
 	"atelier-go/internal/sessions"
+	"atelier-go/internal/utils"
 	"context"
 	"errors"
 	"fmt"
@@ -37,8 +38,13 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 
 	// Attach to session
 	sessionManager := sessions.NewManager()
-	fmt.Printf("Attaching to session '%s' in %s\n", result.Name, result.Path)
+	statusPrefix := ""
+	if utils.IsSSH() {
+		statusPrefix = utils.IconSSH + " "
+	}
+	fmt.Printf("Attaching to %ssession '%s' in %s\n", statusPrefix, result.Name, result.Path)
 	if err := sessionManager.Attach(result.Name, result.Path, result.Command...); err != nil {
+
 		return fmt.Errorf("error attaching to session: %w", err)
 	}
 

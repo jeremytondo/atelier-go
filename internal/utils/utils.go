@@ -94,8 +94,19 @@ func GetCanonicalPath(path string) (string, error) {
 	return resolved, nil
 }
 
+// IconSSH is the Nerd Font icon used for SSH sessions (nf-fa-server).
+const IconSSH = "\uf233"
+
+// IsSSH returns true if the current process is running over an SSH connection.
+func IsSSH() bool {
+	return os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != "" || os.Getenv("SSH_TTY") != ""
+}
+
 // SetTerminalTitle updates the terminal window title using ANSI escape sequences.
 func SetTerminalTitle(title string) {
+	if IsSSH() {
+		title = IconSSH + " " + title
+	}
 	fmt.Printf("\033]0;%s\007", title)
 }
 
