@@ -66,15 +66,17 @@ const (
 )
 
 type model struct {
-	list        list.Model
-	filterInput textinput.Model
-	choice      string
-	action      string
-	key         string
-	quitting    bool
-	prevFilter  string
-	state       state
-	project     string
+	list           list.Model
+	filterInput    textinput.Model
+	choice         string
+	action         string
+	key            string
+	quitting       bool
+	prevFilter     string
+	state          state
+	project        string
+	terminalWidth  int
+	terminalHeight int
 }
 
 func (m model) Init() tea.Cmd {
@@ -149,8 +151,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v-4)
+		m.terminalWidth = msg.Width
+		m.terminalHeight = msg.Height
+		m.list.SetSize(60, 10)
 	}
 
 	m.filterInput, cmd = m.filterInput.Update(msg)
@@ -183,13 +186,22 @@ func (m model) View() string {
 	header := titleStyle.Render(title)
 	search := "\n" + m.filterInput.View() + "\n"
 
-	return docStyle.Render(
+	content := docStyle.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Left,
 			header,
 			search,
 			m.list.View(),
 		),
+	)
+
+	if m.terminalWidth == 0 {
+		return content
+	}
+
+	return lipgloss.Place(m.terminalWidth, m.terminalHeight,
+		lipgloss.Center, lipgloss.Center,
+		content,
 	)
 }
 
@@ -223,7 +235,7 @@ func main() {
 
 	delegate := itemDelegate{defaultDelegate}
 
-	l := list.New(projectItems, delegate, 80, 20)
+	l := list.New(projectItems, delegate, 60, 10)
 	l.SetShowTitle(false)
 	l.SetShowFilter(false)
 	l.SetShowStatusBar(false)
