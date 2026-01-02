@@ -3,12 +3,12 @@ package ui
 import (
 	"atelier-go/internal/config"
 	"atelier-go/internal/locations"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sahilm/fuzzy"
 )
 
 // Focus indicates which panel is active.
@@ -331,14 +331,27 @@ func (m *Model) syncFilter() []tea.Cmd {
 	return cmds
 }
 
+// locationSource implements fuzzy.Source for location matching.
+type locationSource []locations.Location
+
+func (s locationSource) String(i int) string { return s[i].Name }
+func (s locationSource) Len() int            { return len(s) }
+
 func (m *Model) applyLocationFilter() tea.Cmd {
-	val := strings.ToLower(m.filterInput.Value())
+	val := m.filterInput.Value()
 	var items []list.Item
-	for _, loc := range m.allLocations {
-		if val == "" || strings.Contains(strings.ToLower(loc.Name), val) {
+
+	if val == "" {
+		for _, loc := range m.allLocations {
 			items = append(items, LocationItem{Location: loc})
 		}
+	} else {
+		matches := fuzzy.FindFrom(val, locationSource(m.allLocations))
+		for _, match := range matches {
+			items = append(items, LocationItem{Location: m.allLocations[match.Index]})
+		}
 	}
+
 	m.locations.Select(0)
 	return m.locations.SetItems(items)
 }
