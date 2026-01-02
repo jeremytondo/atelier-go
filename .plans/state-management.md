@@ -1,41 +1,50 @@
 # State Management & Auto-Recovery
 
 ## Context
-The user uses `atelier-go` as a remote shell via `autossh`. When the connection drops and reconnects, `atelier-go` restarts at the main menu instead of reconnecting to the previous session.
+The user uses `atelier-go` as a remote shell via `autossh`. When the connection drops and reconnects, `autossh` restarts the application. Without state management, the user is dropped back into the main menu instead of their active session.
 
 ## Goal
-Implement an Auto-Recovery Mechanism to automatically re-attach to the last active session upon reconnection if the session was not cleanly exited.
+Implement a robust Auto-Recovery Mechanism to automatically re-attach to the last active session upon reconnection, supporting multiple concurrent terminals.
 
-## Proposed Solution
+## Implementation Details
 
-### 1. State Tracking
-- Use a state file (e.g., `current_session`) in `XDG_STATE_HOME` (default `~/.local/state/atelier-go/`).
-- Content: The ID of the currently attached session.
+### 1. Client Identification
+Since multiple terminal sessions may exist simultaneously, we use a `--client-id` flag to distinguish between them. This flag is typically provided by a local shell wrapper.
 
-### 2. Logic Changes
+**Local Shell Wrapper (Mac):**
+```bash
+agw() {
+    export ATELIER_CLIENT_ID="${ATELIER_CLIENT_ID:-$(uuidgen | cut -d'-' -f1)}"
+    autossh -M 0 -q -t ag -- "atelier-go --client-id=$ATELIER_CLIENT_ID"
+}
+```
+
+### 2. State Tracking
+- **Location:** `~/.local/state/atelier-go/sessions/<client-id>`
+- **Content:** The ID of the currently attached `zmx` session.
+
+### 3. Logic Flow
+
 - **Before Attach**: Write the target session ID to the state file.
-- **After Attach (Clean Exit)**: Remove the state file. This happens when the user manually detaches or exits the shell.
-- **Startup (Crash Recovery)**:
-    - Check if the state file exists.
-    - If it exists, read the session ID.
-    - Verify if the session is still running in `zmx` (using `zmx list`).
-    - If running: Automatically attach to it (skipping the UI).
-    - If not running: Clean up the state file and proceed to normal UI.
+- **After Attach (Clean Exit)**: Remove the state file.
+- **Startup (Recovery Check)**:
+    1. Check if `--client-id` flag is provided.
+    2. If yes, check for state file at `~/.local/state/atelier-go/sessions/<client-id>`.
+    3. If state file exists, read the session ID.
+    4. Verify if the session is still running (using `zmx list`).
+    5. If running: Automatically attach (skipping UI).
+    6. If not running: Clean up state file and proceed to normal UI.
 
-## Checklist
-- [ ] Implement `GetStateDir` helper in `internal/utils/utils.go`.
-- [ ] Add `SaveState`, `ClearState`, `LoadState` methods in `internal/sessions/sessions.go`.
-- [ ] Update `Attach` workflow in `internal/sessions/sessions.go` to save state before attaching and clear it after detaching.
-- [ ] Update `internal/ui/ui.go` `Run` method to check for recovery state before showing the menu.
-- [ ] Verify session existence using `zmx list` before auto-recovering.
+## Components Modified
 
-## Implementation Notes
-- **File Location**: Ensure we respect XDG Base Directory specification. Use `~/.local/state/atelier-go/current_session`.
-- **Files to Modify**:
-    - `internal/sessions/sessions.go`: State management logic.
-    - `internal/ui/ui.go`: Startup logic.
-    - `internal/utils/utils.go`: Path helpers.
-- **Edge Cases**:
-    - File permissions.
-    - Corrupt state file (should fall back to menu).
-    - Session ID in state file no longer exists in `zmx` (should clean up and fall back to menu).
+- `internal/utils/utils.go`: Added `GetStateDir()` helper (XDG compliant).
+- `internal/sessions/sessions.go`: Added `SaveState`, `LoadState`, `ClearState`, and `SessionExists`.
+- `internal/ui/ui.go`: Updated `Run` to accept `clientID` and handle state lifecycle.
+- `internal/cli/cli.go`: Added persistent `--client-id` flag and `tryRecover` logic.
+- `internal/cli/ui.go`: Integrated recovery check into `ui` command.
+
+## Edge Cases Handled
+- **Connection Drop**: State file remains, triggering recovery on next run.
+- **Session Termination**: If the remote session ends while disconnected, the state is cleaned up and user sees the menu.
+- **Multiple Terminals**: Unique client IDs prevent state collisions.
+- **Manual Attach**: Recovery only triggers when launching the UI/Root command, not when using explicit `sessions attach` commands.

@@ -9,13 +9,21 @@ import (
 	"atelier-go/internal/utils"
 	"context"
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Run executes the interactive UI.
 // It fetches locations using the provided manager, prompts the user, and attaches to a session.
-func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error {
+func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config, clientID string) error {
+	// Try to recover session if client ID is provided
+	if clientID != "" {
+		if recovered := tryRecover(clientID); recovered {
+			return nil
+		}
+	}
+
 	// Fetch locations
 	locs, err := mgr.GetAll(ctx)
 	if err != nil {
@@ -43,10 +51,24 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 	if utils.IsSSH() {
 		statusPrefix = utils.IconSSH + " "
 	}
+
+	// Save state before attaching
+	if clientID != "" {
+		if err := sessions.SaveState(clientID, result.Name); err != nil {
+			fmt.Printf("Warning: failed to save session state: %v\n", err)
+		}
+	}
+
 	fmt.Printf("Attaching to %ssession '%s' in %s\n", statusPrefix, result.Name, result.Path)
 	if err := sessionManager.Attach(result.Name, result.Path, result.Command...); err != nil {
-
 		return fmt.Errorf("error attaching to session: %w", err)
+	}
+
+	// Clear state after clean exit
+	if clientID != "" {
+		if err := sessions.ClearState(clientID); err != nil {
+			fmt.Printf("Warning: failed to clear session state: %v\n", err)
+		}
 	}
 
 	return nil
@@ -81,4 +103,30 @@ func runSelection(locs []locations.Location, cfg *config.Config) (*sessions.Targ
 	}
 
 	return sessionManager.Resolve(*m.Result.Location, actionName, shell, cfg.GetEditor())
+}
+
+// tryRecover attempts to re-attach to a previously active session for the client.
+func tryRecover(clientID string) bool {
+	sessionID, err := sessions.LoadState(clientID)
+	if err != nil || sessionID == "" {
+		return false
+	}
+
+	mgr := sessions.NewManager()
+	if !mgr.SessionExists(sessionID) {
+		// Session no longer exists, clean up stale state
+		_ = sessions.ClearState(clientID)
+		return false
+	}
+
+	// Session exists, re-attach directly
+	fmt.Printf("%s Recovering session '%s'...\n", utils.IconSSH, sessionID)
+	if err := mgr.Attach(sessionID, ""); err != nil {
+		fmt.Fprintf(os.Stderr, "error during recovery: %v\n", err)
+		return false
+	}
+
+	// Successfully re-attached, and clean exit
+	_ = sessions.ClearState(clientID)
+	return true
 }

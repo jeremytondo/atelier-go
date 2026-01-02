@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -135,7 +136,11 @@ func (m *Manager) List() ([]Session, error) {
 		}
 
 		parts := strings.SplitN(line, "\t", 2)
-		sess := Session{ID: parts[0]}
+		id := parts[0]
+		// Handle session_name= prefix if present
+		id = strings.TrimPrefix(id, "session_name=")
+
+		sess := Session{ID: id}
 		if len(parts) > 1 {
 			sess.Path = parts[1]
 		}
@@ -165,6 +170,58 @@ func Sanitize(s string) string {
 	s = strings.ToLower(s)
 	s = sanitizeRegex.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
+}
+
+// SessionExists checks if a session with the given ID is currently running.
+func (m *Manager) SessionExists(sessionID string) bool {
+	sessions, err := m.List()
+	if err != nil {
+		return false
+	}
+	for _, s := range sessions {
+		if s.ID == sessionID {
+			return true
+		}
+	}
+	return false
+}
+
+// SaveState writes the current session ID to the state file for the given client.
+func SaveState(clientID, sessionID string) error {
+	dir, err := utils.GetStateDir()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, clientID), []byte(sessionID), 0600)
+}
+
+// LoadState reads the session ID from the state file for the given client.
+func LoadState(clientID string) (string, error) {
+	dir, err := utils.GetStateDir()
+	if err != nil {
+		return "", err
+	}
+	content, err := os.ReadFile(filepath.Join(dir, clientID))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(content), nil
+}
+
+// ClearState removes the state file for the given client.
+func ClearState(clientID string) error {
+	dir, err := utils.GetStateDir()
+	if err != nil {
+		return err
+	}
+	err = os.Remove(filepath.Join(dir, clientID))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // PrintTable formats and prints the sessions to the provided writer in a table format.

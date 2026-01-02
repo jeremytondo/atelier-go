@@ -128,9 +128,7 @@ atelier-go locations --projects
 
 ## Remote Work
 
-Atelier Go is designed to make working on remote machines feel seamless. One interesting way
-to set this up is by running it via ssh. This allows you to easily work with projects
-on remote machines.
+Atelier Go is designed to make working on remote machines feel seamless. By combining it with `autossh` and its built-in session recovery, you can maintain persistent remote connections that survive network drops.
 
 ### 1. Remote Server Setup
 
@@ -138,7 +136,7 @@ Ensure `atelier-go` is installed on your remote machine (e.g., at `~/.local/bin/
 
 ### 2. SSH Configuration
 
-Add a host entry to your local `~/.ssh/config`.
+Add a host entry to your local `~/.ssh/config`. Using `ControlMaster` and `ServerAlive` settings helps maintain a stable connection.
 
 ```ssh
 Host ag
@@ -148,33 +146,41 @@ Host ag
   ControlPath ~/.ssh/cm-%C
   ControlPersist 10m
   ServerAliveInterval 60
-  RequestTTY yes # Required for the interactive UI
+  ServerAliveCountMax 3
+  RequestTTY yes
   LogLevel QUIET
 ```
 
-### 3. Local Alias
+### 3. Session Recovery (Recommended)
 
-Add an alias to your local shell configuration (e.g., `~/.zshrc` or `~/.bashrc`):
+Atelier Go supports automatic session recovery via the `--client-id` flag. When provided, it tracks the active session and can automatically re-attach if the connection is interrupted and restarted by `autossh`.
+
+Add a shell function to your local configuration (e.g., `~/.zshrc` or `~/.bashrc`):
+
+```bash
+agr() {
+    # Generate a unique ID for this terminal tab if not already set
+    export ATELIER_CLIENT_ID="${ATELIER_CLIENT_ID:-$(uuidgen | cut -d'-' -f1)}"
+    
+    # Use autossh to maintain the connection and pass the client ID
+    autossh -M 0 -q -t ag -- "/home/username/.local/bin/atelier-go --client-id=$ATELIER_CLIENT_ID"
+}
+```
+
+*   **`autossh`**: Automatically restarts the SSH session if it drops.
+*   **`--client-id`**: Tells the remote Atelier Go which session to recover. Using a unique ID per terminal tab allows multiple concurrent remote sessions to recover independently.
+*   **`-t`**: Forces a PTY allocation, which is required for the interactive UI.
+
+Now, if your laptop goes to sleep or your connection drops, `autossh` will reconnect and Atelier Go will instantly drop you back into your active session.
+
+### 4. Basic Remote Usage (No Recovery)
+
+If you don't need recovery, a simple alias works:
 
 ```bash
 alias agr='ssh -t ag -- /home/username/.local/bin/atelier-go'
 ```
 
-*   **`-t`**: Forces a PTY allocation, which is required for the `fzf` UI.
-*   **`--`**: Ensures all following flags are passed to `atelier-go` instead of `ssh`.
-
-Now you can use the remote version of Atelier Go seamlessly:
-
-```bash
-# Launch the interactive UI
-agr
-
-# List remote sessions
-agr sessions list
-
-# Start with specific UI filters
-agr ui --projects
-```
 
 ## Inspiration and Prior Art
 These are the projects that inspired this.
