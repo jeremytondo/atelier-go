@@ -35,17 +35,21 @@ func newRootCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
+			clientID, _ := cmd.Flags().GetString("client-id")
+
 			mgr, err := setupLocationManager(cfg, false, false)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-			if err := ui.Run(cmd.Context(), mgr, cfg); err != nil {
+			if err := ui.Run(cmd.Context(), mgr, cfg, clientID); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
 		},
 	}
+
+	cmd.PersistentFlags().String("client-id", "", "Client identifier for session recovery")
 
 	cmd.AddCommand(newUICmd())
 	cmd.AddCommand(newLocationsCmd())

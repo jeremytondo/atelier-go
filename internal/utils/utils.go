@@ -143,3 +143,21 @@ func GetHostname() (string, error) {
 
 	return strings.ToLower(hostname), nil
 }
+
+// GetStateDir returns the XDG state directory for atelier-go.
+// Creates the directory if it doesn't exist.
+func GetStateDir() (string, error) {
+	stateHome := os.Getenv("XDG_STATE_HOME")
+	if stateHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		stateHome = filepath.Join(home, ".local", "state")
+	}
+	dir := filepath.Join(stateHome, "atelier-go", "sessions")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
