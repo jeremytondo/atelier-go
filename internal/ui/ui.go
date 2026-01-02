@@ -8,8 +8,9 @@ import (
 	"atelier-go/internal/sessions"
 	"atelier-go/internal/utils"
 	"context"
-	"errors"
 	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Run executes the interactive UI.
@@ -51,90 +52,33 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 	return nil
 }
 
-// runSelection executes the selection logic.
+// runSelection executes the TUI and returns a session target
 func runSelection(locs []locations.Location, cfg *config.Config) (*sessions.Target, error) {
-	displayMap := make(map[string]locations.Location)
-	var choices []string
+	model := NewModel(locs)
 
-	for _, loc := range locs {
-		label := FormatLocation(loc)
-		choices = append(choices, label)
-		// Use stripped label as key for robustness
-		displayMap[StripANSI(label)] = loc
-	}
-
-	selection, key, err := Select(choices, "Select Project (Alt-Enter for Secondary)", "Project ➜ ", []string{"alt-enter"})
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	finalModel, err := p.Run()
 	if err != nil {
-		if errors.Is(err, ErrCancelled) {
-			return nil, nil
-		}
-		return nil, err
+		return nil, fmt.Errorf("TUI error: %w", err)
 	}
 
-	item, ok := displayMap[StripANSI(selection)]
+	m, ok := finalModel.(*Model)
 	if !ok {
-		// Fallback: Try exact match
-		if i, okExact := displayMap[selection]; okExact {
-			item = i
-		} else {
-			return nil, fmt.Errorf("invalid selection: %q", selection)
-		}
+		return nil, fmt.Errorf("unexpected model type")
 	}
 
-	secondary := key == "alt-enter"
+	if m.Result.Canceled || m.Result.Location == nil {
+		return nil, nil // User cancelled
+	}
+
+	// Resolve selection to session target
 	shell := env.DetectShell()
 	sessionManager := sessions.NewManager()
 
-	if secondary {
-		if item.Source == "Project" {
-			return showActionMenu(item, shell, cfg.GetEditor(), sessionManager)
-		}
-		// Folder Secondary -> Editor
-		return sessionManager.Resolve(item, "editor", shell, cfg.GetEditor())
+	actionName := ""
+	if m.Result.Action != nil {
+		actionName = m.Result.Action.Name
 	}
 
-	// Primary action
-	return sessionManager.Resolve(item, "", shell, cfg.GetEditor())
-}
-
-func showActionMenu(item locations.Location, shell string, editor string, sessionManager *sessions.Manager) (*sessions.Target, error) {
-	if len(item.Actions) == 0 {
-		// If no actions, just return shell
-		return sessionManager.Resolve(item, "", shell, editor)
-	}
-
-	type actEntry struct {
-		name string
-	}
-	actionMap := make(map[string]actEntry)
-	var actionChoices []string
-
-	// Add actions
-	for i, act := range item.Actions {
-		label := act.Name
-		if i == 0 {
-			label = fmt.Sprintf("%s (Default)", label)
-		}
-		actionChoices = append(actionChoices, label)
-		actionMap[label] = actEntry{name: act.Name}
-	}
-
-	// Add Shell option
-	shellLabel := "Shell"
-	actionChoices = append(actionChoices, shellLabel)
-	actionMap[shellLabel] = actEntry{name: "shell"}
-
-	actSelection, _, err := Select(actionChoices, fmt.Sprintf("Select Action for %s", item.Name), "Action ➜ ", nil)
-	if err != nil {
-		if errors.Is(err, ErrCancelled) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	if entry, ok := actionMap[actSelection]; ok {
-		return sessionManager.Resolve(item, entry.name, shell, editor)
-	}
-
-	return sessionManager.Resolve(item, "", shell, editor)
+	return sessionManager.Resolve(*m.Result.Location, actionName, shell, cfg.GetEditor())
 }

@@ -1,0 +1,164 @@
+package ui
+
+import (
+	"fmt"
+	"io"
+
+	"atelier-go/internal/config"
+	"atelier-go/internal/locations"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// LocationItem wraps locations.Location for list display.
+type LocationItem struct {
+	Location locations.Location
+}
+
+// Title returns the formatted name of the location with an icon.
+func (i LocationItem) Title() string {
+	icon := IconFolder
+	if i.Location.Source == "Project" {
+		icon = IconProject
+	}
+	return fmt.Sprintf("%s %s", icon, i.Location.Name)
+}
+
+// Description returns the filesystem path of the location.
+func (i LocationItem) Description() string { return i.Location.Path }
+
+// FilterValue returns the string used for filtering locations.
+func (i LocationItem) FilterValue() string { return i.Location.Name }
+
+// IsProject returns true if the location is a project.
+func (i LocationItem) IsProject() bool {
+	return i.Location.Source == "Project"
+}
+
+// HasActions returns true if the location has associated actions.
+func (i LocationItem) HasActions() bool {
+	return len(i.Location.Actions) > 0
+}
+
+// ActionItem wraps config.Action for list display.
+type ActionItem struct {
+	Action    config.Action
+	IsDefault bool
+}
+
+// Title returns the formatted name of the action.
+func (a ActionItem) Title() string {
+	if a.IsDefault {
+		return a.Action.Name + " (Default)"
+	}
+	return a.Action.Name
+}
+
+// Description returns an empty string for action items.
+func (a ActionItem) Description() string { return "" }
+
+// FilterValue returns the string used for filtering actions.
+func (a ActionItem) FilterValue() string { return a.Action.Name }
+
+// LocationDelegate renders location items with focus-aware styling.
+type LocationDelegate struct {
+	NormalTitle   lipgloss.Style
+	SelectedTitle lipgloss.Style
+	Focused       bool
+}
+
+// NewLocationDelegate creates a new LocationDelegate with default styling.
+func NewLocationDelegate() LocationDelegate {
+	return LocationDelegate{
+		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
+		SelectedTitle: lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, false, false, true).
+			BorderForeground(ColorAccent).
+			Foreground(ColorAccent).
+			Padding(0, 0, 0, 1),
+		Focused: true,
+	}
+}
+
+// Height returns the number of lines a single item occupies.
+func (d LocationDelegate) Height() int { return 1 }
+
+// Spacing returns the vertical spacing between items.
+func (d LocationDelegate) Spacing() int { return 0 }
+
+// Update handles logic for delegate updates.
+func (d LocationDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+
+// Render paints the location item to the terminal.
+func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	item, ok := listItem.(LocationItem)
+	if !ok {
+		return
+	}
+
+	var style lipgloss.Style
+	if index == m.Index() {
+		style = d.SelectedTitle
+		if !d.Focused {
+			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
+		}
+	} else {
+		style = d.NormalTitle
+		if item.IsProject() {
+			style = style.Copy().Foreground(ColorPrimary)
+		}
+	}
+
+	fmt.Fprint(w, style.Render(item.Title()))
+}
+
+// ActionDelegate renders action items with focus-aware styling.
+type ActionDelegate struct {
+	NormalTitle   lipgloss.Style
+	SelectedTitle lipgloss.Style
+	Focused       bool
+}
+
+// NewActionDelegate creates a new ActionDelegate with default styling.
+func NewActionDelegate() ActionDelegate {
+	return ActionDelegate{
+		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
+		SelectedTitle: lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, false, false, true).
+			BorderForeground(ColorAccent).
+			Foreground(ColorAccent).
+			Padding(0, 0, 0, 1),
+		Focused: false,
+	}
+}
+
+// Height returns the number of lines a single item occupies.
+func (d ActionDelegate) Height() int { return 1 }
+
+// Spacing returns the vertical spacing between items.
+func (d ActionDelegate) Spacing() int { return 0 }
+
+// Update handles logic for delegate updates.
+func (d ActionDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+
+// Render paints the action item to the terminal.
+func (d ActionDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	item, ok := listItem.(ActionItem)
+	if !ok {
+		return
+	}
+
+	var style lipgloss.Style
+	if index == m.Index() {
+		style = d.SelectedTitle
+		if !d.Focused {
+			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
+		}
+	} else {
+		style = d.NormalTitle
+	}
+
+	fmt.Fprint(w, style.Render(item.Title()))
+}

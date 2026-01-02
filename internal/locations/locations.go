@@ -10,6 +10,8 @@ import (
 
 	"atelier-go/internal/config"
 	"atelier-go/internal/utils"
+
+	"github.com/sahilm/fuzzy"
 )
 
 // Location represents a unified project or directory entry.
@@ -75,17 +77,31 @@ func (m *Manager) GetAll(ctx context.Context) ([]Location, error) {
 	return allLocations, nil
 }
 
-// Find searches for a location by name (case-insensitive).
+// locationSource implements fuzzy.Source for location matching.
+type locationSource []Location
+
+func (s locationSource) String(i int) string { return s[i].Name }
+func (s locationSource) Len() int            { return len(s) }
+
+// Find searches for a location by name. It first tries an exact case-insensitive
+// match, then falls back to fuzzy matching if no exact match is found.
 func (m *Manager) Find(ctx context.Context, name string) (*Location, error) {
 	locs, err := m.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	// Try exact match first
 	for _, loc := range locs {
 		if strings.EqualFold(loc.Name, name) {
 			return &loc, nil
 		}
+	}
+
+	// Fallback to fuzzy match
+	matches := fuzzy.FindFrom(name, locationSource(locs))
+	if len(matches) > 0 {
+		return &locs[matches[0].Index], nil
 	}
 
 	return nil, fmt.Errorf("location %q not found", name)
