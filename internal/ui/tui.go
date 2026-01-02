@@ -11,22 +11,24 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Focus indicates which panel is active
+// Focus indicates which panel is active.
 type Focus int
 
 const (
+	// FocusLocations represents the left panel (projects/directories).
 	FocusLocations Focus = iota
+	// FocusActions represents the right panel (available commands).
 	FocusActions
 )
 
-// SelectionResult holds the final user selection
+// SelectionResult holds the final user selection.
 type SelectionResult struct {
 	Location *locations.Location
 	Action   *config.Action
 	Canceled bool
 }
 
-// Model is the Bubble Tea model for the TUI
+// Model is the Bubble Tea model for the TUI.
 type Model struct {
 	// Data
 	allLocations []locations.Location
@@ -40,31 +42,34 @@ type Model struct {
 
 	// State
 	focus           Focus
-	width           int
-	height          int
+	layout          Layout
+	styles          Styles
 	quitting        bool
 	lastLeftFilter  string
 	lastRightFilter string
-	focusChanged    bool // Track if focus changed this update
 
 	// Result
 	Result SelectionResult
 }
 
-// NewModel creates a TUI model from locations
-func NewModel(locs []locations.Location) Model {
+// NewModel creates a TUI model from locations.
+func NewModel(locs []locations.Location) *Model {
 	// Convert to list items
 	items := make([]list.Item, len(locs))
 	for i, loc := range locs {
 		items[i] = LocationItem{Location: loc}
 	}
 
+	// Initial layout and styles (will be updated on first resize)
+	layout := DefaultLayout(100, 30)
+	styles := DefaultStyles(layout)
+
 	// Delegates
 	locDelegate := NewLocationDelegate()
 	actDelegate := NewActionDelegate()
 
 	// Location list
-	locList := list.New(items, locDelegate, LeftWidth, ListHeight)
+	locList := list.New(items, locDelegate, layout.LeftWidth, layout.ListHeight)
 	locList.SetShowTitle(false)
 	locList.SetShowFilter(false)
 	locList.SetShowStatusBar(false)
@@ -72,7 +77,7 @@ func NewModel(locs []locations.Location) Model {
 	locList.KeyMap.Filter.SetEnabled(false) // Disable internal filtering key
 
 	// Action list (empty initially)
-	actList := list.New(nil, actDelegate, RightWidth, ListHeight)
+	actList := list.New(nil, actDelegate, layout.RightWidth, layout.ListHeight)
 	actList.SetShowTitle(false)
 	actList.SetShowFilter(false)
 	actList.SetShowStatusBar(false)
@@ -84,12 +89,12 @@ func NewModel(locs []locations.Location) Model {
 	ti.Focus()
 	ti.Prompt = IconSearch + " "
 	ti.CharLimit = 64
-	ti.Width = LeftWidth
+	ti.Width = layout.LeftWidth
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(ColorBorder).Bold(true)
 	ti.TextStyle = lipgloss.NewStyle().Bold(true)
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(ColorDimmed)
 
-	return Model{
+	return &Model{
 		allLocations:      locs,
 		locations:         locList,
 		locationsDelegate: locDelegate,
@@ -97,12 +102,23 @@ func NewModel(locs []locations.Location) Model {
 		actionsDelegate:   actDelegate,
 		filterInput:       ti,
 		focus:             FocusLocations,
-		focusChanged:      true, // Trigger initial delegate set
+		layout:            layout,
+		styles:            styles,
 	}
 }
 
+// Init initializes the model.
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, m.updateActions())
+}
+
+// setFocus updates the active panel and its corresponding styling.
+func (m *Model) setFocus(f Focus) {
+	m.focus = f
+	m.locationsDelegate.Focused = (m.focus == FocusLocations)
+	m.locations.SetDelegate(m.locationsDelegate)
+	m.actionsDelegate.Focused = (m.focus == FocusActions)
+	m.actions.SetDelegate(m.actionsDelegate)
 }
 
 func (m *Model) updateActions() tea.Cmd {
@@ -130,13 +146,12 @@ func (m *Model) updateActions() tea.Cmd {
 	return m.actions.SetItems(items)
 }
 
+// Update handles terminal messages and user input.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
-
-	m.focusChanged = false
 
 	// 1. Handle key messages
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -175,9 +190,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 2. Handle other messages
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		InitStyles(m.width, m.height)
+		m.layout = DefaultLayout(msg.Width, msg.Height)
+		m.styles = DefaultStyles(m.layout)
 		m.updateDimensions()
 	}
 
@@ -189,15 +203,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 4. Sync filter
 		cmds = append(cmds, m.syncFilter()...)
 
-		// 5. Update focus state of delegates if it changed
-		if m.focusChanged {
-			m.locationsDelegate.Focused = (m.focus == FocusLocations)
-			m.locations.SetDelegate(m.locationsDelegate)
-			m.actionsDelegate.Focused = (m.focus == FocusActions)
-			m.actions.SetDelegate(m.actionsDelegate)
-		}
-
-		// 6. Route non-key messages to lists
+		// 5. Route non-key messages to lists
 		if _, isKey := msg.(tea.KeyMsg); !isKey {
 			m.locations, cmd = m.locations.Update(msg)
 			cmds = append(cmds, cmd)
@@ -212,14 +218,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) handleEscape() []tea.Cmd {
 	var cmds []tea.Cmd
 	if m.focus == FocusActions {
-		m.focus = FocusLocations
-		m.focusChanged = true
+		m.setFocus(FocusLocations)
 		m.filterInput.SetValue(m.lastLeftFilter)
 		m.filterInput.Prompt = IconSearch + " "
 		m.actions.SetFilterText("")
 		m.lastRightFilter = ""
 		cmds = append(cmds, m.applyLocationFilter())
-		m.locations.Select(0)
 		cmds = append(cmds, m.updateActions())
 		return cmds
 	}
@@ -234,7 +238,6 @@ func (m *Model) handleEscape() []tea.Cmd {
 	m.filterInput.SetValue("")
 	cmds = append(cmds, m.applyLocationFilter())
 	m.lastLeftFilter = ""
-	m.locations.Select(0)
 	cmds = append(cmds, m.updateActions())
 	return cmds
 }
@@ -249,8 +252,7 @@ func (m *Model) handleSelect() []tea.Cmd {
 
 		if sel.HasActions() {
 			// Drill into actions
-			m.focus = FocusActions
-			m.focusChanged = true
+			m.setFocus(FocusActions)
 			m.lastLeftFilter = m.filterInput.Value()
 			m.filterInput.SetValue("")
 			m.filterInput.Prompt = "Action " + IconSearch + " "
@@ -317,7 +319,6 @@ func (m *Model) syncFilter() []tea.Cmd {
 		if val != m.lastLeftFilter {
 			cmds = append(cmds, m.applyLocationFilter())
 			m.lastLeftFilter = val
-			m.locations.Select(0)
 			cmds = append(cmds, m.updateActions())
 		}
 	} else {
@@ -338,43 +339,43 @@ func (m *Model) applyLocationFilter() tea.Cmd {
 			items = append(items, LocationItem{Location: loc})
 		}
 	}
-	m.locations.SetSize(LeftWidth, ListHeight)
 	m.locations.Select(0)
 	return m.locations.SetItems(items)
 }
 
 func (m *Model) updateDimensions() {
-	m.locations.SetSize(LeftWidth, ListHeight)
-	m.actions.SetSize(RightWidth, ListHeight)
-	m.filterInput.Width = LeftWidth
+	m.locations.SetSize(m.layout.LeftWidth, m.layout.ListHeight)
+	m.actions.SetSize(m.layout.RightWidth, m.layout.ListHeight)
+	m.filterInput.Width = m.layout.LeftWidth
 }
 
+// View renders the TUI to the terminal.
 func (m *Model) View() string {
 	if m.quitting {
 		return ""
 	}
 
-	search := SearchInputStyle.Render(m.filterInput.View())
+	search := m.styles.SearchInput.Render(m.filterInput.View())
 
 	// Spotlight: only show panels when there's input or in actions mode
 	if m.filterInput.Value() == "" && m.focus == FocusLocations {
-		content := WindowStyle.Render(search)
-		if m.width == 0 {
+		content := m.styles.Window.Render(search)
+		if m.layout.Width == 0 {
 			return content
 		}
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		return lipgloss.Place(m.layout.Width, m.layout.Height, lipgloss.Center, lipgloss.Center, content)
 	}
 
 	var leftView string
 	if len(m.locations.Items()) == 0 {
-		leftView = LeftPanelStyle.Render("No items match your search")
+		leftView = m.styles.LeftPanel.Render("No items match your search")
 	} else {
-		leftView = LeftPanelStyle.Render(m.locations.View())
+		leftView = m.styles.LeftPanel.Render(m.locations.View())
 	}
 
 	actionTitle := "AVAILABLE ACTIONS"
 	if m.focus == FocusActions {
-		actionTitle = FocusedTitleStyle.Render("SELECT ACTION")
+		actionTitle = m.styles.FocusedTitle.Render("SELECT ACTION")
 	}
 
 	var rightView string
@@ -384,11 +385,11 @@ func (m *Model) View() string {
 		rightView = m.actions.View()
 	}
 
-	right := RightPanelStyle.Render(
+	right := m.styles.RightPanel.Render(
 		lipgloss.JoinVertical(lipgloss.Left, actionTitle, "", rightView),
 	)
 
-	help := HelpStyle.Render("Enter:Select • Tab:Actions • Alt+Enter:Fast • Esc:Back • Ctrl+C:Quit")
+	help := m.styles.Help.Render("Enter:Select • Tab:Actions • Alt+Enter:Fast • Esc:Back • Ctrl+C:Quit")
 
 	inner := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -397,11 +398,11 @@ func (m *Model) View() string {
 		help,
 	)
 
-	content := WindowStyle.Render(inner)
+	content := m.styles.Window.Render(inner)
 
-	if m.width == 0 {
+	if m.layout.Width == 0 {
 		return content
 	}
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	return lipgloss.Place(m.layout.Width, m.layout.Height, lipgloss.Center, lipgloss.Center, content)
 }

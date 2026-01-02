@@ -56,7 +56,7 @@ func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config) error 
 func runSelection(locs []locations.Location, cfg *config.Config) (*sessions.Target, error) {
 	model := NewModel(locs)
 
-	p := tea.NewProgram(&model, tea.WithAltScreen())
+	p := tea.NewProgram(model, tea.WithAltScreen())
 	finalModel, err := p.Run()
 	if err != nil {
 		return nil, fmt.Errorf("TUI error: %w", err)

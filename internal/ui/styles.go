@@ -14,7 +14,7 @@ var (
 	ColorDimmed  = lipgloss.Color("240")     // Unfocused
 )
 
-// Icons (Nerd Font) - can be overridden by init()
+// Icons (Nerd Font)
 var (
 	IconFolder  = "\uea83"
 	IconProject = "\uf503"
@@ -27,75 +27,88 @@ func init() {
 		IconProject = "P"
 		IconSearch = "S"
 	}
-
-	// Initialize with reasonable defaults
-	InitStyles(100, 30)
 }
 
-// Styles - initialized with defaults, updated on resize
-var (
-	WindowStyle       lipgloss.Style
-	LeftPanelStyle    lipgloss.Style
-	RightPanelStyle   lipgloss.Style
-	SearchInputStyle  lipgloss.Style
-	FocusedTitleStyle lipgloss.Style
-	HelpStyle         lipgloss.Style
-)
-
-// Dimensions - updated on resize
-var (
+// Layout defines the dimensions and proportions of the TUI panels.
+type Layout struct {
+	Width        int
+	Height       int
 	ContentWidth int
 	LeftWidth    int
 	RightWidth   int
 	ListHeight   int
-)
+}
 
-// InitStyles recalculates styles based on terminal size
-func InitStyles(termWidth, termHeight int) {
+// Styles holds all the lipgloss styles used in the TUI.
+type Styles struct {
+	Window       lipgloss.Style
+	LeftPanel    lipgloss.Style
+	RightPanel   lipgloss.Style
+	SearchInput  lipgloss.Style
+	FocusedTitle lipgloss.Style
+	Help         lipgloss.Style
+}
+
+// DefaultLayout returns a Layout based on the provided terminal dimensions.
+func DefaultLayout(termWidth, termHeight int) Layout {
 	// Constrain content width: min 60, max 120
-	ContentWidth = termWidth - 4
-	if ContentWidth > 120 {
-		ContentWidth = 120
+	contentWidth := termWidth - 4
+	if contentWidth > 120 {
+		contentWidth = 120
 	}
-	if ContentWidth < 60 {
-		ContentWidth = 60
+	if contentWidth < 60 {
+		contentWidth = 60
 	}
 
 	// Panel widths: 60/40 split
-	LeftWidth = ContentWidth * 60 / 100
-	RightWidth = ContentWidth - LeftWidth - 3 // Account for border
+	leftWidth := contentWidth * 60 / 100
+	rightWidth := contentWidth - leftWidth - 3 // Account for border
 
 	// List height: leave room for search + borders
-	ListHeight = termHeight - 8
-	if ListHeight < 5 {
-		ListHeight = 5
+	listHeight := termHeight - 8
+	if listHeight < 5 {
+		listHeight = 5
 	}
-	if ListHeight > 20 {
-		ListHeight = 20
+	if listHeight > 20 {
+		listHeight = 20
 	}
 
-	WindowStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(0, 1)
+	return Layout{
+		Width:        termWidth,
+		Height:       termHeight,
+		ContentWidth: contentWidth,
+		LeftWidth:    leftWidth,
+		RightWidth:   rightWidth,
+		ListHeight:   listHeight,
+	}
+}
 
-	LeftPanelStyle = lipgloss.NewStyle().
-		Width(LeftWidth).
-		Border(lipgloss.NormalBorder(), false, true, false, false).
-		BorderForeground(ColorDimmed)
+// DefaultStyles returns the default Styles based on a Layout.
+func DefaultStyles(l Layout) Styles {
+	return Styles{
+		Window: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1),
 
-	RightPanelStyle = lipgloss.NewStyle().
-		Width(RightWidth).
-		PaddingLeft(2)
+		LeftPanel: lipgloss.NewStyle().
+			Width(l.LeftWidth).
+			Border(lipgloss.NormalBorder(), false, true, false, false).
+			BorderForeground(ColorDimmed),
 
-	SearchInputStyle = lipgloss.NewStyle().
-		Padding(1, 0)
+		RightPanel: lipgloss.NewStyle().
+			Width(l.RightWidth).
+			PaddingLeft(2),
 
-	FocusedTitleStyle = lipgloss.NewStyle().
-		Foreground(ColorAccent).
-		Bold(true)
+		SearchInput: lipgloss.NewStyle().
+			Padding(1, 0),
 
-	HelpStyle = lipgloss.NewStyle().
-		Foreground(ColorDimmed).
-		MarginTop(1)
+		FocusedTitle: lipgloss.NewStyle().
+			Foreground(ColorAccent).
+			Bold(true),
+
+		Help: lipgloss.NewStyle().
+			Foreground(ColorDimmed).
+			MarginTop(1),
+	}
 }
