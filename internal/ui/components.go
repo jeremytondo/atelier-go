@@ -6,6 +6,7 @@ import (
 
 	"atelier-go/internal/config"
 	"atelier-go/internal/locations"
+	"atelier-go/internal/utils"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -99,12 +100,13 @@ func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		icon = IconProject
 	}
 
+	var mainPart string
 	if index == m.Index() {
 		style := d.SelectedStyle
 		if !d.Focused {
 			style = style.Foreground(ColorSubtext).BorderForeground(ColorSubtext)
 		}
-		_, _ = fmt.Fprint(w, style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name)))
+		mainPart = style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name))
 	} else {
 		iconStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
 		textStyle := d.NormalStyle.Foreground(ColorText)
@@ -113,9 +115,33 @@ func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 			iconStyle = iconStyle.Foreground(ColorAccent)
 			textStyle = textStyle.Foreground(ColorAccent)
 		}
-
-		_, _ = fmt.Fprint(w, iconStyle.Render(icon)+" "+textStyle.Render(item.Location.Name))
+		mainPart = iconStyle.Render(icon) + " " + textStyle.Render(item.Location.Name)
 	}
+
+	// Add shortened path if there's enough space
+	shortPath := utils.ShortenPath(item.Location.Path)
+	avail := m.Width() - lipgloss.Width(mainPart) - 2
+	if avail > 10 {
+		pathStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
+		truncatedPath := truncate(shortPath, avail)
+		mainPart += " " + pathStyle.Render(truncatedPath)
+	}
+
+	_, _ = fmt.Fprint(w, mainPart)
+}
+
+func truncate(s string, w int) string {
+	if lipgloss.Width(s) <= w {
+		return s
+	}
+	res := ""
+	for _, r := range s {
+		if lipgloss.Width(res+string(r)+"...") > w {
+			break
+		}
+		res += string(r)
+	}
+	return res + "..."
 }
 
 // ActionDelegate renders action items with focus-aware styling.
