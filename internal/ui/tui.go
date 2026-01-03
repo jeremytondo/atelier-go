@@ -405,7 +405,7 @@ func (m *Model) View() string {
 		lipgloss.JoinVertical(lipgloss.Left, actionTitle, "", rightView),
 	)
 
-	help := m.styles.Help.Render("Enter:Select • Tab:Actions • Alt+Enter:Fast • Esc:Back • Ctrl+C:Quit")
+	help := m.styles.Help.Render("Enter:Select • Tab:Actions • Alt+Enter:Default Action • Esc:Back • Ctrl+C:Quit")
 
 	inner := lipgloss.JoinVertical(
 		lipgloss.Left,
