@@ -75,8 +75,9 @@ func LoadConfig() (*Config, error) {
 		if err := vHost.ReadInConfig(); err == nil {
 			var hostCfg Config
 			if err := vHost.Unmarshal(&hostCfg); err == nil {
-				// Manually merge projects
+				// Manually merge
 				cfg.Projects = mergeProjects(cfg.Projects, hostCfg.Projects)
+				cfg.Theme = mergeTheme(cfg.Theme, hostCfg.Theme)
 			} else {
 				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
 			}
@@ -86,6 +87,26 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// mergeTheme merges two themes. Host values override global.
+func mergeTheme(global, host Theme) Theme {
+	if host.Primary != "" {
+		global.Primary = host.Primary
+	}
+	if host.Accent != "" {
+		global.Accent = host.Accent
+	}
+	if host.Highlight != "" {
+		global.Highlight = host.Highlight
+	}
+	if host.Text != "" {
+		global.Text = host.Text
+	}
+	if host.Subtext != "" {
+		global.Subtext = host.Subtext
+	}
+	return global
 }
 
 // mergeProjects merges two project slices. Projects in host override global by name.

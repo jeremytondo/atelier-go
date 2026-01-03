@@ -62,38 +62,28 @@ type Layout struct {
 
 // Styles holds all the lipgloss styles used in the TUI.
 type Styles struct {
-	Window       lipgloss.Style
-	LeftPanel    lipgloss.Style
-	RightPanel   lipgloss.Style
-	SearchInput  lipgloss.Style
-	FocusedTitle lipgloss.Style
-	NormalTitle  lipgloss.Style
-	Help         lipgloss.Style
+	Window           lipgloss.Style
+	LeftPanel        lipgloss.Style
+	RightPanel       lipgloss.Style
+	SearchInput      lipgloss.Style
+	FocusedTitle     lipgloss.Style
+	NormalTitle      lipgloss.Style
+	Help             lipgloss.Style
+	DelegateNormal   lipgloss.Style
+	DelegateSelected lipgloss.Style
 }
 
 // DefaultLayout returns a Layout based on the provided terminal dimensions.
 func DefaultLayout(termWidth, termHeight int) Layout {
 	// Constrain content width: min 60, max 120
-	contentWidth := termWidth - 4
-	if contentWidth > 120 {
-		contentWidth = 120
-	}
-	if contentWidth < 60 {
-		contentWidth = 60
-	}
+	contentWidth := max(60, min(120, termWidth-4))
 
 	// Panel widths: 60/40 split
 	leftWidth := contentWidth * 60 / 100
 	rightWidth := contentWidth - leftWidth - 3 // Account for border
 
 	// List height: leave room for search + borders + titles
-	listHeight := termHeight - 11
-	if listHeight < 5 {
-		listHeight = 5
-	}
-	if listHeight > 20 {
-		listHeight = 20
-	}
+	listHeight := max(5, min(20, termHeight-11))
 
 	return Layout{
 		Width:        termWidth,
@@ -141,5 +131,14 @@ func DefaultStyles(l Layout) Styles {
 		Help: lipgloss.NewStyle().
 			Foreground(ColorSubtext).
 			MarginTop(1),
+
+		DelegateNormal: lipgloss.NewStyle().
+			Padding(0, 0, 0, 1),
+
+		DelegateSelected: lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), false, false, false, true).
+			BorderForeground(ColorHighlight).
+			Foreground(ColorHighlight).
+			Padding(0, 0, 0, 1),
 	}
 }

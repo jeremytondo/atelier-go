@@ -64,21 +64,17 @@ func (a ActionItem) FilterValue() string { return a.Action.Name }
 
 // LocationDelegate renders location items with focus-aware styling.
 type LocationDelegate struct {
-	NormalTitle   lipgloss.Style
-	SelectedTitle lipgloss.Style
+	NormalStyle   lipgloss.Style
+	SelectedStyle lipgloss.Style
 	Focused       bool
 }
 
 // NewLocationDelegate creates a new LocationDelegate with default styling.
-func NewLocationDelegate() LocationDelegate {
+func NewLocationDelegate(styles Styles) LocationDelegate {
 	return LocationDelegate{
-		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
-		SelectedTitle: lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorHighlight).
-			Foreground(ColorHighlight).
-			Padding(0, 0, 0, 1),
-		Focused: true,
+		NormalStyle:   styles.DelegateNormal,
+		SelectedStyle: styles.DelegateSelected,
+		Focused:       true,
 	}
 }
 
@@ -104,41 +100,37 @@ func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 	}
 
 	if index == m.Index() {
-		style := d.SelectedTitle
+		style := d.SelectedStyle
 		if !d.Focused {
-			style = style.Copy().Foreground(ColorSubtext).BorderForeground(ColorSubtext)
+			style = style.Foreground(ColorSubtext).BorderForeground(ColorSubtext)
 		}
-		fmt.Fprint(w, style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name)))
+		_, _ = fmt.Fprint(w, style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name)))
 	} else {
 		iconStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
-		textStyle := d.NormalTitle.Copy().Foreground(ColorText)
+		textStyle := d.NormalStyle.Foreground(ColorText)
 
 		if item.IsProject() {
 			iconStyle = iconStyle.Foreground(ColorAccent)
 			textStyle = textStyle.Foreground(ColorAccent)
 		}
 
-		fmt.Fprint(w, iconStyle.Render(icon)+" "+textStyle.Render(item.Location.Name))
+		_, _ = fmt.Fprint(w, iconStyle.Render(icon)+" "+textStyle.Render(item.Location.Name))
 	}
 }
 
 // ActionDelegate renders action items with focus-aware styling.
 type ActionDelegate struct {
-	NormalTitle   lipgloss.Style
-	SelectedTitle lipgloss.Style
+	NormalStyle   lipgloss.Style
+	SelectedStyle lipgloss.Style
 	Focused       bool
 }
 
 // NewActionDelegate creates a new ActionDelegate with default styling.
-func NewActionDelegate() ActionDelegate {
+func NewActionDelegate(styles Styles) ActionDelegate {
 	return ActionDelegate{
-		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
-		SelectedTitle: lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorHighlight).
-			Foreground(ColorHighlight).
-			Padding(0, 0, 0, 1),
-		Focused: false,
+		NormalStyle:   styles.DelegateNormal,
+		SelectedStyle: styles.DelegateSelected,
+		Focused:       false,
 	}
 }
 
@@ -160,13 +152,13 @@ func (d ActionDelegate) Render(w io.Writer, m list.Model, index int, listItem li
 
 	var style lipgloss.Style
 	if index == m.Index() {
-		style = d.SelectedTitle
+		style = d.SelectedStyle
 		if !d.Focused {
-			style = style.Copy().Foreground(ColorSubtext).BorderForeground(ColorSubtext)
+			style = style.Foreground(ColorSubtext).BorderForeground(ColorSubtext)
 		}
 	} else {
-		style = d.NormalTitle.Copy().Foreground(ColorText)
+		style = d.NormalStyle.Foreground(ColorText)
 	}
 
-	fmt.Fprint(w, style.Render(item.Title()))
+	_, _ = fmt.Fprint(w, style.Render(item.Title()))
 }
