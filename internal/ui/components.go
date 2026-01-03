@@ -6,6 +6,7 @@ import (
 
 	"atelier-go/internal/config"
 	"atelier-go/internal/locations"
+	"atelier-go/internal/utils"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -64,21 +65,17 @@ func (a ActionItem) FilterValue() string { return a.Action.Name }
 
 // LocationDelegate renders location items with focus-aware styling.
 type LocationDelegate struct {
-	NormalTitle   lipgloss.Style
-	SelectedTitle lipgloss.Style
+	NormalStyle   lipgloss.Style
+	SelectedStyle lipgloss.Style
 	Focused       bool
 }
 
 // NewLocationDelegate creates a new LocationDelegate with default styling.
-func NewLocationDelegate() LocationDelegate {
+func NewLocationDelegate(styles Styles) LocationDelegate {
 	return LocationDelegate{
-		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
-		SelectedTitle: lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorAccent).
-			Foreground(ColorAccent).
-			Padding(0, 0, 0, 1),
-		Focused: true,
+		NormalStyle:   styles.DelegateNormal,
+		SelectedStyle: styles.DelegateSelected,
+		Focused:       true,
 	}
 }
 
@@ -98,39 +95,68 @@ func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	var style lipgloss.Style
-	if index == m.Index() {
-		style = d.SelectedTitle
-		if !d.Focused {
-			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
-		}
-	} else {
-		style = d.NormalTitle
-		if item.IsProject() {
-			style = style.Copy().Foreground(ColorPrimary)
-		}
+	icon := IconFolder
+	if item.IsProject() {
+		icon = IconProject
 	}
 
-	fmt.Fprint(w, style.Render(item.Title()))
+	var mainPart string
+	if index == m.Index() {
+		style := d.SelectedStyle
+		if !d.Focused {
+			style = style.Foreground(ColorSubtext).BorderForeground(ColorSubtext)
+		}
+		mainPart = style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name))
+	} else {
+		iconStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
+		textStyle := d.NormalStyle.Foreground(ColorText)
+
+		if item.IsProject() {
+			iconStyle = iconStyle.Foreground(ColorAccent)
+			textStyle = textStyle.Foreground(ColorAccent)
+		}
+		mainPart = iconStyle.Render(icon) + " " + textStyle.Render(item.Location.Name)
+	}
+
+	// Add shortened path if there's enough space
+	shortPath := utils.ShortenPath(item.Location.Path)
+	avail := m.Width() - lipgloss.Width(mainPart) - 2
+	if avail > 10 {
+		pathStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
+		truncatedPath := truncate(shortPath, avail)
+		mainPart += " " + pathStyle.Render(truncatedPath)
+	}
+
+	_, _ = fmt.Fprint(w, mainPart)
+}
+
+func truncate(s string, w int) string {
+	if lipgloss.Width(s) <= w {
+		return s
+	}
+	res := ""
+	for _, r := range s {
+		if lipgloss.Width(res+string(r)+"...") > w {
+			break
+		}
+		res += string(r)
+	}
+	return res + "..."
 }
 
 // ActionDelegate renders action items with focus-aware styling.
 type ActionDelegate struct {
-	NormalTitle   lipgloss.Style
-	SelectedTitle lipgloss.Style
+	NormalStyle   lipgloss.Style
+	SelectedStyle lipgloss.Style
 	Focused       bool
 }
 
 // NewActionDelegate creates a new ActionDelegate with default styling.
-func NewActionDelegate() ActionDelegate {
+func NewActionDelegate(styles Styles) ActionDelegate {
 	return ActionDelegate{
-		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
-		SelectedTitle: lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorAccent).
-			Foreground(ColorAccent).
-			Padding(0, 0, 0, 1),
-		Focused: false,
+		NormalStyle:   styles.DelegateNormal,
+		SelectedStyle: styles.DelegateSelected,
+		Focused:       false,
 	}
 }
 
@@ -152,13 +178,13 @@ func (d ActionDelegate) Render(w io.Writer, m list.Model, index int, listItem li
 
 	var style lipgloss.Style
 	if index == m.Index() {
-		style = d.SelectedTitle
+		style = d.SelectedStyle
 		if !d.Focused {
-			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
+			style = style.Foreground(ColorSubtext).BorderForeground(ColorSubtext)
 		}
 	} else {
-		style = d.NormalTitle
+		style = d.NormalStyle.Foreground(ColorText)
 	}
 
-	fmt.Fprint(w, style.Render(item.Title()))
+	_, _ = fmt.Fprint(w, style.Render(item.Title()))
 }
