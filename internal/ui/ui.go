@@ -17,6 +17,9 @@ import (
 // Run executes the interactive UI.
 // It fetches locations using the provided manager, prompts the user, and attaches to a session.
 func Run(ctx context.Context, mgr *locations.Manager, cfg *config.Config, clientID string) error {
+	// Apply custom theme from config
+	ApplyTheme(cfg.Theme)
+
 	// Try to recover session if client ID is provided
 	if clientID != "" {
 		if recovered := tryRecover(clientID); recovered {

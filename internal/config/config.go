@@ -27,6 +27,16 @@ type Action struct {
 type Config struct {
 	Projects []Project `mapstructure:"projects"`
 	Editor   string    `mapstructure:"editor"`
+	Theme    Theme     `mapstructure:"theme"`
+}
+
+// Theme holds color settings for the UI.
+type Theme struct {
+	Primary   string `mapstructure:"primary"`
+	Accent    string `mapstructure:"accent"`
+	Highlight string `mapstructure:"highlight"`
+	Text      string `mapstructure:"text"`
+	Subtext   string `mapstructure:"subtext"`
 }
 
 // LoadConfig loads the configuration from the config directory.

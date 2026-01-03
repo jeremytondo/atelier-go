@@ -75,8 +75,8 @@ func NewLocationDelegate() LocationDelegate {
 		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
 		SelectedTitle: lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorAccent).
-			Foreground(ColorAccent).
+			BorderForeground(ColorHighlight).
+			Foreground(ColorHighlight).
 			Padding(0, 0, 0, 1),
 		Focused: true,
 	}
@@ -98,20 +98,28 @@ func (d LocationDelegate) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	var style lipgloss.Style
-	if index == m.Index() {
-		style = d.SelectedTitle
-		if !d.Focused {
-			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
-		}
-	} else {
-		style = d.NormalTitle
-		if item.IsProject() {
-			style = style.Copy().Foreground(ColorPrimary)
-		}
+	icon := IconFolder
+	if item.IsProject() {
+		icon = IconProject
 	}
 
-	fmt.Fprint(w, style.Render(item.Title()))
+	if index == m.Index() {
+		style := d.SelectedTitle
+		if !d.Focused {
+			style = style.Copy().Foreground(ColorSubtext).BorderForeground(ColorSubtext)
+		}
+		fmt.Fprint(w, style.Render(fmt.Sprintf("%s %s", icon, item.Location.Name)))
+	} else {
+		iconStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
+		textStyle := d.NormalTitle.Copy().Foreground(ColorText)
+
+		if item.IsProject() {
+			iconStyle = iconStyle.Foreground(ColorAccent)
+			textStyle = textStyle.Foreground(ColorAccent)
+		}
+
+		fmt.Fprint(w, iconStyle.Render(icon)+" "+textStyle.Render(item.Location.Name))
+	}
 }
 
 // ActionDelegate renders action items with focus-aware styling.
@@ -127,8 +135,8 @@ func NewActionDelegate() ActionDelegate {
 		NormalTitle: lipgloss.NewStyle().Padding(0, 0, 0, 1),
 		SelectedTitle: lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			BorderForeground(ColorAccent).
-			Foreground(ColorAccent).
+			BorderForeground(ColorHighlight).
+			Foreground(ColorHighlight).
 			Padding(0, 0, 0, 1),
 		Focused: false,
 	}
@@ -154,10 +162,10 @@ func (d ActionDelegate) Render(w io.Writer, m list.Model, index int, listItem li
 	if index == m.Index() {
 		style = d.SelectedTitle
 		if !d.Focused {
-			style = style.Copy().Foreground(ColorDimmed).BorderForeground(ColorDimmed)
+			style = style.Copy().Foreground(ColorSubtext).BorderForeground(ColorSubtext)
 		}
 	} else {
-		style = d.NormalTitle
+		style = d.NormalTitle.Copy().Foreground(ColorText)
 	}
 
 	fmt.Fprint(w, style.Render(item.Title()))

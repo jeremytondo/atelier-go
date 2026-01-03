@@ -8,6 +8,8 @@ It allows you to quickly jump into projects and apps, making it easier to work w
 - [About](#about)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+  - [General Settings](#general-settings)
+  - [Theme](#theme)
   - [Projects](#projects)
   - [Host-Specific Projects](#host-specific-projects)
 - [Usage](#usage)
@@ -44,6 +46,26 @@ editor: "nvim"
 ```
 
 *   **`editor`**: The command used to open folders (e.g., `nvim`, `vim`, `code`). If not set, it defaults to the `$EDITOR` environment variable, then `vim`.
+
+### Theme
+
+You can customize the UI colors by adding a `theme` section to your `config.yaml`.
+
+```yaml
+theme:
+  primary: "#89b4fa"         # Main window and search box borders
+  accent: "#74c7ec"          # Project icons and names, search icon
+  highlight: "#cba6f7"       # Selections and focused panel headers
+  text: "#ffffff"            # Primary content and labels
+  subtext: "240"             # Secondary info and help text
+```
+
+*   Colors can be specified as Hex strings (e.g., `"#RRGGBB"`) or ANSI color numbers (e.g., `"240"`).
+*   **`primary`**: Used for all major UI borders and the search prompt icon.
+*   **`accent`**: Used for project identifiers (icons/names).
+*   **`highlight`**: Used for the currently selected item and focused panel headers.
+*   **`text`**: Used for primary labels and standard text.
+*   **`subtext`**: Used for help text, inactive borders, and secondary information.
 
 ### Projects
 
@@ -84,7 +106,7 @@ atelier-go hostname
 
 ### Picker UI
 
-Running `atelier-go` without arguments (or using the `ui` command) opens an interactive `fzf` window.
+Running `atelier-go` without arguments (or using the `ui` command) opens an interactive TUI.
 
 #### Triggers
 

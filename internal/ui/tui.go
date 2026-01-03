@@ -89,10 +89,10 @@ func NewModel(locs []locations.Location) *Model {
 	ti.Focus()
 	ti.Prompt = IconSearch + " "
 	ti.CharLimit = 64
-	ti.Width = layout.LeftWidth
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(ColorBorder).Bold(true)
-	ti.TextStyle = lipgloss.NewStyle().Bold(true)
-	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(ColorDimmed)
+	ti.Width = layout.ContentWidth - 10
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(ColorText).Bold(true)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(ColorSubtext)
 
 	return &Model{
 		allLocations:      locs,
@@ -119,6 +119,13 @@ func (m *Model) setFocus(f Focus) {
 	m.locations.SetDelegate(m.locationsDelegate)
 	m.actionsDelegate.Focused = (m.focus == FocusActions)
 	m.actions.SetDelegate(m.actionsDelegate)
+
+	// Update search prompt based on focus
+	if f == FocusLocations {
+		m.filterInput.Prompt = IconSearch + " "
+	} else {
+		m.filterInput.Prompt = "Action " + IconSearch + " "
+	}
 }
 
 func (m *Model) updateActions() tea.Cmd {
@@ -148,10 +155,7 @@ func (m *Model) updateActions() tea.Cmd {
 
 // Update handles terminal messages and user input.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	// 1. Handle key messages
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -197,6 +201,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// 3. Update components (always update filter input if not quitting)
 	if !m.quitting {
+		var cmd tea.Cmd
 		m.filterInput, cmd = m.filterInput.Update(msg)
 		cmds = append(cmds, cmd)
 
@@ -220,7 +225,6 @@ func (m *Model) handleEscape() []tea.Cmd {
 	if m.focus == FocusActions {
 		m.setFocus(FocusLocations)
 		m.filterInput.SetValue(m.lastLeftFilter)
-		m.filterInput.Prompt = IconSearch + " "
 		m.actions.SetFilterText("")
 		m.lastRightFilter = ""
 		cmds = append(cmds, m.applyLocationFilter())
@@ -255,7 +259,6 @@ func (m *Model) handleSelect() []tea.Cmd {
 			m.setFocus(FocusActions)
 			m.lastLeftFilter = m.filterInput.Value()
 			m.filterInput.SetValue("")
-			m.filterInput.Prompt = "Action " + IconSearch + " "
 			m.actions.Select(0)
 			cmds = append(cmds, m.updateActions())
 			return cmds
@@ -359,7 +362,7 @@ func (m *Model) applyLocationFilter() tea.Cmd {
 func (m *Model) updateDimensions() {
 	m.locations.SetSize(m.layout.LeftWidth, m.layout.ListHeight)
 	m.actions.SetSize(m.layout.RightWidth, m.layout.ListHeight)
-	m.filterInput.Width = m.layout.LeftWidth
+	m.filterInput.Width = m.layout.ContentWidth - 10
 }
 
 // View renders the TUI to the terminal.
@@ -370,23 +373,23 @@ func (m *Model) View() string {
 
 	search := m.styles.SearchInput.Render(m.filterInput.View())
 
-	// Spotlight: only show panels when there's input or in actions mode
-	if m.filterInput.Value() == "" && m.focus == FocusLocations {
-		content := m.styles.Window.Render(search)
-		if m.layout.Width == 0 {
-			return content
-		}
-		return lipgloss.Place(m.layout.Width, m.layout.Height, lipgloss.Center, lipgloss.Center, content)
+	locationTitle := m.styles.NormalTitle.Render("PROJECTS & LOCATIONS")
+	if m.focus == FocusLocations {
+		locationTitle = m.styles.FocusedTitle.Render("SELECT LOCATION")
 	}
 
 	var leftView string
 	if len(m.locations.Items()) == 0 {
-		leftView = m.styles.LeftPanel.Render("No items match your search")
+		leftView = m.styles.LeftPanel.Render(
+			lipgloss.JoinVertical(lipgloss.Left, locationTitle, "", "No items match your search"),
+		)
 	} else {
-		leftView = m.styles.LeftPanel.Render(m.locations.View())
+		leftView = m.styles.LeftPanel.Render(
+			lipgloss.JoinVertical(lipgloss.Left, locationTitle, "", m.locations.View()),
+		)
 	}
 
-	actionTitle := "AVAILABLE ACTIONS"
+	actionTitle := m.styles.NormalTitle.Render("AVAILABLE ACTIONS")
 	if m.focus == FocusActions {
 		actionTitle = m.styles.FocusedTitle.Render("SELECT ACTION")
 	}
