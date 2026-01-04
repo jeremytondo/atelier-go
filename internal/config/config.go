@@ -137,23 +137,21 @@ func mergeProjects(global, host []Project) []Project {
 	return merged
 }
 
-// MergeActions merges two action slices. Host values (or more specific ones) override earlier ones by name.
-// Matching is case-insensitive.
-func MergeActions(first, second []Action) []Action {
-	actionMap := make(map[string]int)
-	merged := make([]Action, len(first))
-	copy(merged, first)
+// MergeActions merges two action slices. specific actions (e.g. project actions)
+// come first and override global actions by name. Matching is case-insensitive.
+func MergeActions(global, specific []Action) []Action {
+	actionMap := make(map[string]bool)
+	merged := make([]Action, 0, len(global)+len(specific))
 
-	for i, a := range merged {
-		actionMap[utils.Sanitize(a.Name)] = i
+	// Add all specific actions first
+	for _, a := range specific {
+		merged = append(merged, a)
+		actionMap[utils.Sanitize(a.Name)] = true
 	}
 
-	for _, a := range second {
-		if idx, exists := actionMap[utils.Sanitize(a.Name)]; exists {
-			// Override
-			merged[idx] = a
-		} else {
-			// Append
+	// Add global actions that don't overlap
+	for _, a := range global {
+		if !actionMap[utils.Sanitize(a.Name)] {
 			merged = append(merged, a)
 		}
 	}

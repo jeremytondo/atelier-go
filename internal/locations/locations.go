@@ -132,47 +132,36 @@ func BuildActionsWithShell(actions []config.Action, shellDefault bool) []config.
 		return nil
 	}
 
-	// Check if "Shell" already exists (case-insensitive)
-	hasShell := false
+	// Create a new slice and find if "Shell" exists
+	var shellAction *config.Action
+	var otherActions []config.Action
+
 	for _, a := range actions {
 		if strings.EqualFold(a.Name, "shell") {
-			hasShell = true
-			break
-		}
-	}
-
-	if hasShell {
-		// If it exists, we just return a copy of the input slice to avoid mutation
-		merged := make([]config.Action, len(actions))
-		copy(merged, actions)
-		// If shellDefault is true, we should move it to the front if it's not there
-		if shellDefault && !strings.EqualFold(merged[0].Name, "shell") {
-			var shellIdx int
-			for i, a := range merged {
-				if strings.EqualFold(a.Name, "shell") {
-					shellIdx = i
-					break
-				}
+			// Keep the first "Shell" action found (respecting custom commands)
+			if shellAction == nil {
+				copyAct := a
+				shellAction = &copyAct
 			}
-			shell := merged[shellIdx]
-			// Remove from current position and prepend
-			merged = append(merged[:shellIdx], merged[shellIdx+1:]...)
-			merged = append([]config.Action{shell}, merged...)
+		} else {
+			otherActions = append(otherActions, a)
 		}
-		return merged
 	}
 
-	shellAction := config.Action{Name: "Shell", Command: ""}
+	// If no Shell action was found, create the default one
+	if shellAction == nil {
+		shellAction = &config.Action{Name: "Shell", Command: ""}
+	}
 
+	// Position Shell correctly
+	merged := make([]config.Action, 0, len(otherActions)+1)
 	if shellDefault {
-		merged := make([]config.Action, 0, len(actions)+1)
-		merged = append(merged, shellAction)
-		merged = append(merged, actions...)
-		return merged
+		merged = append(merged, *shellAction)
+		merged = append(merged, otherActions...)
+	} else {
+		merged = append(merged, otherActions...)
+		merged = append(merged, *shellAction)
 	}
 
-	merged := make([]config.Action, 0, len(actions)+1)
-	merged = append(merged, actions...)
-	merged = append(merged, shellAction)
 	return merged
 }

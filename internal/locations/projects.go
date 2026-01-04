@@ -52,7 +52,7 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 
 		actions := proj.Actions
 		if proj.UseDefaultActions() {
-			actions = config.MergeActions(proj.Actions, p.defaultActions)
+			actions = config.MergeActions(p.defaultActions, proj.Actions)
 		}
 
 		shellDefault := proj.GetShellDefault(p.rootShellDefault)
