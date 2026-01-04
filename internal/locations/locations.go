@@ -123,3 +123,56 @@ func PrintTable(w io.Writer, locs []Location) error {
 
 	return utils.RenderTable(w, headers, rows)
 }
+
+// BuildActionsWithShell constructs the final action list, positioning "Shell"
+// correctly based on the shellDefault setting. It ensures no duplicate "Shell" action
+// and avoids mutating the input slice.
+func BuildActionsWithShell(actions []config.Action, shellDefault bool) []config.Action {
+	if len(actions) == 0 {
+		return nil
+	}
+
+	// Check if "Shell" already exists (case-insensitive)
+	hasShell := false
+	for _, a := range actions {
+		if strings.EqualFold(a.Name, "shell") {
+			hasShell = true
+			break
+		}
+	}
+
+	if hasShell {
+		// If it exists, we just return a copy of the input slice to avoid mutation
+		merged := make([]config.Action, len(actions))
+		copy(merged, actions)
+		// If shellDefault is true, we should move it to the front if it's not there
+		if shellDefault && !strings.EqualFold(merged[0].Name, "shell") {
+			var shellIdx int
+			for i, a := range merged {
+				if strings.EqualFold(a.Name, "shell") {
+					shellIdx = i
+					break
+				}
+			}
+			shell := merged[shellIdx]
+			// Remove from current position and prepend
+			merged = append(merged[:shellIdx], merged[shellIdx+1:]...)
+			merged = append([]config.Action{shell}, merged...)
+		}
+		return merged
+	}
+
+	shellAction := config.Action{Name: "Shell", Command: ""}
+
+	if shellDefault {
+		merged := make([]config.Action, 0, len(actions)+1)
+		merged = append(merged, shellAction)
+		merged = append(merged, actions...)
+		return merged
+	}
+
+	merged := make([]config.Action, 0, len(actions)+1)
+	merged = append(merged, actions...)
+	merged = append(merged, shellAction)
+	return merged
+}

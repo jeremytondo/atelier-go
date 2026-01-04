@@ -12,9 +12,11 @@ import (
 
 // Project represents a defined project with a name and a filesystem path.
 type Project struct {
-	Name    string   `mapstructure:"name"`
-	Path    string   `mapstructure:"path"`
-	Actions []Action `mapstructure:"actions"`
+	Name           string   `mapstructure:"name"`
+	Path           string   `mapstructure:"path"`
+	Actions        []Action `mapstructure:"actions"`
+	DefaultActions *bool    `mapstructure:"default-actions"`
+	ShellDefault   *bool    `mapstructure:"shell-default"`
 }
 
 // Action represents a runnable command associated with a project.
@@ -25,9 +27,11 @@ type Action struct {
 
 // Config represents the application configuration.
 type Config struct {
-	Projects []Project `mapstructure:"projects"`
-	Editor   string    `mapstructure:"editor"`
-	Theme    Theme     `mapstructure:"theme"`
+	Projects     []Project `mapstructure:"projects"`
+	Actions      []Action  `mapstructure:"actions"`
+	ShellDefault *bool     `mapstructure:"shell-default"`
+	Editor       string    `mapstructure:"editor"`
+	Theme        Theme     `mapstructure:"theme"`
 }
 
 // Theme holds color settings for the UI.
@@ -77,6 +81,7 @@ func LoadConfig() (*Config, error) {
 			if err := vHost.Unmarshal(&hostCfg); err == nil {
 				// Manually merge
 				cfg.Projects = mergeProjects(cfg.Projects, hostCfg.Projects)
+				cfg.Actions = MergeActions(cfg.Actions, hostCfg.Actions)
 				cfg.Theme = mergeTheme(cfg.Theme, hostCfg.Theme)
 			} else {
 				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
@@ -130,6 +135,55 @@ func mergeProjects(global, host []Project) []Project {
 	}
 
 	return merged
+}
+
+// MergeActions merges two action slices. Host values (or more specific ones) override earlier ones by name.
+// Matching is case-insensitive.
+func MergeActions(first, second []Action) []Action {
+	actionMap := make(map[string]int)
+	merged := make([]Action, len(first))
+	copy(merged, first)
+
+	for i, a := range merged {
+		actionMap[utils.Sanitize(a.Name)] = i
+	}
+
+	for _, a := range second {
+		if idx, exists := actionMap[utils.Sanitize(a.Name)]; exists {
+			// Override
+			merged[idx] = a
+		} else {
+			// Append
+			merged = append(merged, a)
+		}
+	}
+
+	return merged
+}
+
+// UseDefaultActions returns true if the project should use default actions.
+func (p Project) UseDefaultActions() bool {
+	if p.DefaultActions == nil {
+		return true
+	}
+	return *p.DefaultActions
+}
+
+// GetShellDefault returns the shell-default setting for the project.
+// If not set, it inherits from the root setting.
+func (p Project) GetShellDefault(rootDefault bool) bool {
+	if p.ShellDefault == nil {
+		return rootDefault
+	}
+	return *p.ShellDefault
+}
+
+// GetShellDefault returns the root shell-default setting.
+func (c *Config) GetShellDefault() bool {
+	if c.ShellDefault == nil {
+		return false
+	}
+	return *c.ShellDefault
 }
 
 // GetEditor returns the configured editor or fallbacks.

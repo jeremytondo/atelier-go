@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -40,55 +39,51 @@ func NewManager() *Manager {
 
 // Resolve converts a location and optional action into a concrete Target.
 func (m *Manager) Resolve(loc locations.Location, actionName string, shell string, editor string) (*Target, error) {
-	sanitizedAction := Sanitize(actionName)
+	sanitizedAction := utils.Sanitize(actionName)
 
-	if loc.Source == "Project" {
-		// If actionName is provided, look it up
-		if actionName != "" && sanitizedAction != "shell" {
-			for _, act := range loc.Actions {
-				if Sanitize(act.Name) == sanitizedAction {
-					return &Target{
-						Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
-						Path:    loc.Path,
-						Command: env.BuildInteractiveWrapper(shell, act.Command),
-					}, nil
-				}
+	// 1. If actionName is provided (and not "shell" or "editor"), look it up
+	if actionName != "" && sanitizedAction != "shell" && sanitizedAction != "editor" {
+		for _, act := range loc.Actions {
+			if utils.Sanitize(act.Name) == sanitizedAction {
+				return &Target{
+					Name:    fmt.Sprintf("%s:%s", utils.Sanitize(loc.Name), utils.Sanitize(act.Name)),
+					Path:    loc.Path,
+					Command: env.BuildInteractiveWrapper(shell, act.Command),
+				}, nil
 			}
-			return nil, fmt.Errorf("action %q not found in project %q", actionName, loc.Name)
 		}
-
-		// If "shell" was explicitly requested, or no action was provided and no actions exist
-		if sanitizedAction == "shell" || len(loc.Actions) == 0 {
-			return &Target{
-				Name:    Sanitize(loc.Name),
-				Path:    loc.Path,
-				Command: env.BuildInteractiveWrapper(shell, ""),
-			}, nil
-		}
-
-		// No actionName (and not "shell"), use default action (first one)
-		act := loc.Actions[0]
-		return &Target{
-			Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
-			Path:    loc.Path,
-			Command: env.BuildInteractiveWrapper(shell, act.Command),
-		}, nil
+		return nil, fmt.Errorf("action %q not found for %q", actionName, loc.Name)
 	}
 
-	// Zoxide / Folder
+	// 2. Handle "editor" special case
 	if sanitizedAction == "editor" {
 		return &Target{
-			Name:    Sanitize(loc.Name) + ":editor",
+			Name:    utils.Sanitize(loc.Name) + ":editor",
 			Path:    loc.Path,
 			Command: env.BuildInteractiveWrapper(shell, editor+" ."),
 		}, nil
 	}
 
-	// Default: Open Shell
+	// 3. If "shell" was explicitly requested, or no actions exist
+	if sanitizedAction == "shell" || len(loc.Actions) == 0 {
+		return &Target{
+			Name:    utils.Sanitize(loc.Name),
+			Path:    loc.Path,
+			Command: env.BuildInteractiveWrapper(shell, ""),
+		}, nil
+	}
+
+	// 4. No actionName provided and actions exist, use default action (first one)
+	act := loc.Actions[0]
+	name := fmt.Sprintf("%s:%s", utils.Sanitize(loc.Name), utils.Sanitize(act.Name))
+	// If the default action is "Shell", don't add the suffix
+	if utils.Sanitize(act.Name) == "shell" {
+		name = utils.Sanitize(loc.Name)
+	}
 	return &Target{
-		Name:    Sanitize(loc.Name),
+		Name:    name,
 		Path:    loc.Path,
-		Command: env.BuildInteractiveWrapper(shell, ""),
+		Command: env.BuildInteractiveWrapper(shell, act.Command),
 	}, nil
 }
 
@@ -161,15 +156,6 @@ func (m *Manager) Kill(name string) error {
 		return fmt.Errorf("failed to kill session %s: %w", name, err)
 	}
 	return nil
-}
-
-var sanitizeRegex = regexp.MustCompile(`[^a-z0-9]+`)
-
-// Sanitize cleans a string to be used as a session name component.
-func Sanitize(s string) string {
-	s = strings.ToLower(s)
-	s = sanitizeRegex.ReplaceAllString(s, "-")
-	return strings.Trim(s, "-")
 }
 
 // SessionExists checks if a session with the given ID is currently running.

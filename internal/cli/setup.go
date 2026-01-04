@@ -15,10 +15,10 @@ func setupLocationManager(cfg *config.Config, includeProjects, includeZoxide boo
 
 	var providers []locations.Provider
 	if includeProjects {
-		providers = append(providers, locations.NewProjectProvider(cfg.Projects))
+		providers = append(providers, locations.NewProjectProvider(cfg.Projects, cfg.Actions, cfg.GetShellDefault()))
 	}
 	if includeZoxide {
-		providers = append(providers, locations.NewZoxideProvider())
+		providers = append(providers, locations.NewZoxideProvider(cfg.Actions, cfg.GetShellDefault()))
 	}
 
 	return locations.NewManager(providers...), nil
