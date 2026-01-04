@@ -7,10 +7,20 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"text/tabwriter"
 )
+
+var sanitizeRegex = regexp.MustCompile(`[^a-z0-9]+`)
+
+// Sanitize cleans a string to be used as a session name component.
+func Sanitize(s string) string {
+	s = strings.ToLower(s)
+	s = sanitizeRegex.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
+}
 
 // NewTableWriter creates a configured tabwriter for consistent table output.
 func NewTableWriter(w io.Writer) *tabwriter.Writer {

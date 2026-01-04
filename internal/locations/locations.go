@@ -123,3 +123,45 @@ func PrintTable(w io.Writer, locs []Location) error {
 
 	return utils.RenderTable(w, headers, rows)
 }
+
+// BuildActionsWithShell constructs the final action list, positioning "Shell"
+// correctly based on the shellDefault setting. It ensures no duplicate "Shell" action
+// and avoids mutating the input slice.
+func BuildActionsWithShell(actions []config.Action, shellDefault bool) []config.Action {
+	if len(actions) == 0 {
+		return nil
+	}
+
+	// Create a new slice and find if "Shell" exists
+	var shellAction *config.Action
+	var otherActions []config.Action
+
+	for _, a := range actions {
+		if strings.EqualFold(a.Name, "shell") {
+			// Keep the first "Shell" action found (respecting custom commands)
+			if shellAction == nil {
+				copyAct := a
+				shellAction = &copyAct
+			}
+		} else {
+			otherActions = append(otherActions, a)
+		}
+	}
+
+	// If no Shell action was found, create the default one
+	if shellAction == nil {
+		shellAction = &config.Action{Name: "Shell", Command: ""}
+	}
+
+	// Position Shell correctly
+	merged := make([]config.Action, 0, len(otherActions)+1)
+	if shellDefault {
+		merged = append(merged, *shellAction)
+		merged = append(merged, otherActions...)
+	} else {
+		merged = append(merged, otherActions...)
+		merged = append(merged, *shellAction)
+	}
+
+	return merged
+}

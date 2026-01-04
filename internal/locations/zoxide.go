@@ -1,6 +1,7 @@
 package locations
 
 import (
+	"atelier-go/internal/config"
 	"atelier-go/internal/utils"
 	"bufio"
 	"bytes"
@@ -12,11 +13,17 @@ import (
 )
 
 // ZoxideProvider implements Provider for zoxide directories.
-type ZoxideProvider struct{}
+type ZoxideProvider struct {
+	defaultActions []config.Action
+	shellDefault   bool
+}
 
 // NewZoxideProvider creates a new ZoxideProvider.
-func NewZoxideProvider() *ZoxideProvider {
-	return &ZoxideProvider{}
+func NewZoxideProvider(defaultActions []config.Action, shellDefault bool) *ZoxideProvider {
+	return &ZoxideProvider{
+		defaultActions: defaultActions,
+		shellDefault:   shellDefault,
+	}
 }
 
 // Name returns the provider name.
@@ -44,9 +51,10 @@ func (z *ZoxideProvider) Fetch(ctx context.Context) ([]Location, error) {
 			}
 
 			locations = append(locations, Location{
-				Name:   filepath.Base(cleanPath),
-				Path:   cleanPath,
-				Source: z.Name(),
+				Name:    filepath.Base(cleanPath),
+				Path:    cleanPath,
+				Source:  z.Name(),
+				Actions: BuildActionsWithShell(z.defaultActions, z.shellDefault),
 			})
 		}
 	}

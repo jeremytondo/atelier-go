@@ -2,6 +2,7 @@
 package sessions
 
 import (
+	"atelier-go/internal/config"
 	"atelier-go/internal/env"
 	"atelier-go/internal/locations"
 	"atelier-go/internal/utils"
@@ -13,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -40,55 +40,61 @@ func NewManager() *Manager {
 
 // Resolve converts a location and optional action into a concrete Target.
 func (m *Manager) Resolve(loc locations.Location, actionName string, shell string, editor string) (*Target, error) {
-	sanitizedAction := Sanitize(actionName)
+	sanitizedAction := utils.Sanitize(actionName)
 
-	if loc.Source == "Project" {
-		// If actionName is provided, look it up
-		if actionName != "" && sanitizedAction != "shell" {
-			for _, act := range loc.Actions {
-				if Sanitize(act.Name) == sanitizedAction {
-					return &Target{
-						Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
-						Path:    loc.Path,
-						Command: env.BuildInteractiveWrapper(shell, act.Command),
-					}, nil
-				}
+	// 1. If an actionName is provided, try to find it in loc.Actions first.
+	// This respects custom "shell" or "editor" actions.
+	if actionName != "" {
+		for _, act := range loc.Actions {
+			if utils.Sanitize(act.Name) == sanitizedAction {
+				return m.resolveAction(loc, act, shell)
 			}
-			return nil, fmt.Errorf("action %q not found in project %q", actionName, loc.Name)
 		}
 
-		// If "shell" was explicitly requested, or no action was provided and no actions exist
-		if sanitizedAction == "shell" || len(loc.Actions) == 0 {
+		// 2. Fallback to built-in behaviors if not found in loc.Actions
+		if sanitizedAction == "editor" {
 			return &Target{
-				Name:    Sanitize(loc.Name),
+				Name:    utils.Sanitize(loc.Name) + ":editor",
+				Path:    loc.Path,
+				Command: env.BuildInteractiveWrapper(shell, editor+" ."),
+			}, nil
+		}
+
+		if sanitizedAction == "shell" {
+			return &Target{
+				Name:    utils.Sanitize(loc.Name),
 				Path:    loc.Path,
 				Command: env.BuildInteractiveWrapper(shell, ""),
 			}, nil
 		}
 
-		// No actionName (and not "shell"), use default action (first one)
-		act := loc.Actions[0]
-		return &Target{
-			Name:    fmt.Sprintf("%s:%s", Sanitize(loc.Name), Sanitize(act.Name)),
-			Path:    loc.Path,
-			Command: env.BuildInteractiveWrapper(shell, act.Command),
-		}, nil
+		return nil, fmt.Errorf("action %q not found for %q", actionName, loc.Name)
 	}
 
-	// Zoxide / Folder
-	if sanitizedAction == "editor" {
-		return &Target{
-			Name:    Sanitize(loc.Name) + ":editor",
-			Path:    loc.Path,
-			Command: env.BuildInteractiveWrapper(shell, editor+" ."),
-		}, nil
+	// 3. No actionName provided. Use default action (first one) if it exists.
+	if len(loc.Actions) > 0 {
+		return m.resolveAction(loc, loc.Actions[0], shell)
 	}
 
-	// Default: Open Shell
+	// 4. No actions exist, open a shell.
 	return &Target{
-		Name:    Sanitize(loc.Name),
+		Name:    utils.Sanitize(loc.Name),
 		Path:    loc.Path,
 		Command: env.BuildInteractiveWrapper(shell, ""),
+	}, nil
+}
+
+// resolveAction creates a Target from a specific action.
+func (m *Manager) resolveAction(loc locations.Location, act config.Action, shell string) (*Target, error) {
+	name := fmt.Sprintf("%s:%s", utils.Sanitize(loc.Name), utils.Sanitize(act.Name))
+	// If the action is "Shell", don't add the suffix for consistency
+	if utils.Sanitize(act.Name) == "shell" {
+		name = utils.Sanitize(loc.Name)
+	}
+	return &Target{
+		Name:    name,
+		Path:    loc.Path,
+		Command: env.BuildInteractiveWrapper(shell, act.Command),
 	}, nil
 }
 
@@ -161,15 +167,6 @@ func (m *Manager) Kill(name string) error {
 		return fmt.Errorf("failed to kill session %s: %w", name, err)
 	}
 	return nil
-}
-
-var sanitizeRegex = regexp.MustCompile(`[^a-z0-9]+`)
-
-// Sanitize cleans a string to be used as a session name component.
-func Sanitize(s string) string {
-	s = strings.ToLower(s)
-	s = sanitizeRegex.ReplaceAllString(s, "-")
-	return strings.Trim(s, "-")
 }
 
 // SessionExists checks if a session with the given ID is currently running.

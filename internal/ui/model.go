@@ -204,12 +204,6 @@ func (m *Model) updateActions() tea.Cmd {
 				IsDefault: i == 0,
 			})
 		}
-		// Add Shell option for projects with actions
-		if sel.IsProject() && len(sel.Location.Actions) > 0 {
-			items = append(items, ActionItem{
-				Action: config.Action{Name: "Shell", Command: ""},
-			})
-		}
 	}
 
 	if len(items) == 0 {

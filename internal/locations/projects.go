@@ -10,12 +10,18 @@ import (
 
 // ProjectProvider implements Provider for configured projects.
 type ProjectProvider struct {
-	projects []config.Project
+	projects         []config.Project
+	defaultActions   []config.Action
+	rootShellDefault bool
 }
 
 // NewProjectProvider creates a new ProjectProvider.
-func NewProjectProvider(projects []config.Project) *ProjectProvider {
-	return &ProjectProvider{projects: projects}
+func NewProjectProvider(projects []config.Project, defaultActions []config.Action, rootShellDefault bool) *ProjectProvider {
+	return &ProjectProvider{
+		projects:         projects,
+		defaultActions:   defaultActions,
+		rootShellDefault: rootShellDefault,
+	}
 }
 
 // Name returns the provider name.
@@ -44,11 +50,19 @@ func (p *ProjectProvider) Fetch(ctx context.Context) ([]Location, error) {
 			continue
 		}
 
+		actions := proj.Actions
+		if proj.UseDefaultActions() {
+			actions = config.MergeActions(p.defaultActions, proj.Actions)
+		}
+
+		shellDefault := proj.GetShellDefault(p.rootShellDefault)
+		actions = BuildActionsWithShell(actions, shellDefault)
+
 		locations = append(locations, Location{
 			Name:    proj.Name,
 			Path:    filepath.Clean(expandedPath),
 			Source:  p.Name(),
-			Actions: proj.Actions,
+			Actions: actions,
 		})
 	}
 
