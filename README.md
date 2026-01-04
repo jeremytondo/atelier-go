@@ -39,13 +39,20 @@ Atelier Go looks for configuration in `~/.config/atelier-go/`.
 
 ### General Settings
 
-You can define global settings like your preferred editor at the top of `config.yaml`.
+You can define global settings like your preferred editor and default actions at the top of `config.yaml`.
 
 ```yaml
 editor: "nvim"
+shell-default: true
+
+actions:
+  - name: "Build"
+    command: "make"
 ```
 
 *   **`editor`**: The command used to open folders (e.g., `nvim`, `vim`, `code`). If not set, it defaults to the `$EDITOR` environment variable, then `vim`.
+*   **`shell-default`**: If set to `true`, a "Shell" action is prepended to the beginning of the action list for all locations, making it the default. Defaults to `false` (Shell is appended to the end).
+*   **`actions`**: A list of global actions that will be available for all discovered locations (projects and zoxide directories).
 
 ### Theme
 
@@ -77,16 +84,18 @@ You can define projects by creating a `config.yaml` file in `~/.config/atelier-g
 projects:
   - name: "My Application"
     path: "~/dev/my-app"
+    default-actions: true
+    shell-default: false
     actions:
       - name: "Run Server"
         command: "npm start"
-      - name: "Build"
-        command: "make build"
 ```
 
 *   **`name`**: The display name shown in the UI.
 *   **`path`**: The directory to jump into (supports `~` expansion).
-*   **`actions`**: Custom commands you can run.
+*   **`default-actions`**: Whether to include global actions for this project. Defaults to `true`.
+*   **`shell-default`**: Override the global `shell-default` setting for this specific project.
+*   **`actions`**: Custom commands for this project. These are merged with global actions if `default-actions` is `true`, with project-specific actions taking precedence.
 
 ### Host-Specific Projects
 
@@ -106,18 +115,20 @@ atelier-go hostname
 
 ### Picker UI
 
-Running `atelier-go` without arguments (or using the `ui` command) opens an interactive TUI.
+Running `atelier-go` without arguments (or using the `ui` command) opens an interactive TUI. The UI displays both your configured projects and your most frequent `zoxide` directories, including their shortened paths for easy identification.
 
 #### Triggers
 
-Atelier Go uses a dual-trigger system to launch different actions depending on the location type:
+Atelier Go uses a unified trigger system for all locations:
 
-| Location Type | Primary (`Enter`) | Secondary (`Alt-Enter`) |
+| Action | Key | Description |
 | :--- | :--- | :--- |
-| **Folder** (Zoxide) | Open Shell | Open Editor |
-| **Project** (Configured) | Run Default Action* | Open Action Menu |
+| **Select** | `Enter` / `Tab` | Drill into the action menu for the selected location.* |
+| **Fast Select** | `Alt-Enter` | Instantly launch the **Default Action**. |
 
-*\*Default Action is the first action defined in the project configuration. If no actions are defined, it falls back to a shell.*
+*\*If a location has no configured actions (global or project-specific), `Enter` will instantly launch the default action (Shell).*
+
+The **Default Action** is the first action in the list. By default, this is the first project-specific action or the first global action. If `shell-default` is set to `true`, then "Shell" becomes the default action.
 
 #### Filters
 
@@ -134,7 +145,7 @@ If you prefer using the CLI over the interactive UI, you can manage your persist
 *   **Run a specific action**: `atelier-go sessions attach -p my-project -a "Run Server"`
 *   **Jump into a folder**: `atelier-go sessions attach -f ~/some/path`
 
-You can even use the reserved `--action Shell` to bypass a project's default action and just open a shell.
+You can use the reserved `--action Shell` to bypass a project's default action and just open a shell.
 
 ### Locations
 
