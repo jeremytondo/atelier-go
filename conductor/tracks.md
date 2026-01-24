@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Prioritize Projects in Locations List**
+- [x] **Track: Prioritize Projects in Locations List**
 *Link: [./tracks/prioritize_projects_20260124/](./tracks/prioritize_projects_20260124/)*
