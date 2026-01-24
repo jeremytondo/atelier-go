@@ -140,6 +140,7 @@ func TestConfig_Merge(t *testing.T) {
 			{Name: "p2", Path: "/p2"},
 		},
 		Actions: []Action{
+			{Name: "a0", Command: "c0"},
 			{Name: "a1", Command: "c1"},
 		},
 		Theme: Theme{
@@ -181,12 +182,18 @@ func TestConfig_Merge(t *testing.T) {
 	}
 
 	// Check Actions
-	if len(global.Actions) != 2 {
-		t.Errorf("expected 2 actions, got %d", len(global.Actions))
+	if len(global.Actions) != 3 {
+		t.Errorf("expected 3 actions, got %d", len(global.Actions))
 	}
-	// Our MergeActions implementation puts specific (host) actions first
-	if global.Actions[0].Command != "c1-host" {
-		t.Errorf("expected a1 command c1-host, got %s", global.Actions[0].Command)
+	// Global actions are preserved in order, but overridden by host values.
+	if global.Actions[0].Name != "a0" || global.Actions[0].Command != "c0" {
+		t.Errorf("expected a0 at index 0, got %v", global.Actions[0])
+	}
+	if global.Actions[1].Name != "a1" || global.Actions[1].Command != "c1-host" {
+		t.Errorf("expected a1 overridden at index 1, got %v", global.Actions[1])
+	}
+	if global.Actions[2].Name != "a2" || global.Actions[2].Command != "c2" {
+		t.Errorf("expected a2 appended at index 2, got %v", global.Actions[2])
 	}
 
 	// Check Theme
