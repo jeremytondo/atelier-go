@@ -12,15 +12,15 @@ This plan outlines the steps to refactor the configuration package to support mo
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Struct Definition & Defaults' (Protocol in workflow.md)
 
 ## Phase 2: Loading & Merging Logic
-- [~] Task: Implement base configuration loading.
-    - [ ] Subtask: Create `LoadConfig` function in `internal/config/config.go`.
-    - [ ] Subtask: Configure Viper to look in `~/.config/atelier-go` and read `config.yaml`.
-    - [ ] Subtask: Write tests for successful and failed file loading.
-- [ ] Task: Implement host-specific override logic.
-    - [ ] Subtask: Implement logic to detect hostname.
-    - [ ] Subtask: Use Viper's `MergeInConfig` to overlay `<hostname>.yaml`.
-    - [ ] Subtask: Create integration tests with mock config files to verify merging behavior (e.g., host config overriding base config).
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Loading & Merging Logic' (Protocol in workflow.md)
+- [x] Task: Implement base configuration loading. 4c8abf2
+    - [x] Subtask: Create `LoadConfig` function in `internal/config/config.go`.
+    - [x] Subtask: Configure Viper to look in `~/.config/atelier-go` and read `config.yaml`.
+    - [x] Subtask: Write tests for successful and failed file loading.
+- [x] Task: Implement host-specific override logic. 4c8abf2
+    - [x] Subtask: Implement logic to detect hostname.
+    - [x] Subtask: Use Viper's `MergeInConfig` to overlay `<hostname>.yaml`.
+    - [x] Subtask: Create integration tests with mock config files to verify merging behavior (e.g., host config overriding base config).
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Loading & Merging Logic' (Protocol in workflow.md)
 
 ## Phase 3: Validation & Cleanup
 - [ ] Task: Implement configuration validation.
