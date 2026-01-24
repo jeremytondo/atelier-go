@@ -111,11 +111,35 @@ To see what hostname Atelier Go is using for your current host, run:
 atelier-go hostname
 ```
 
+You can override the detected hostname by setting the `ATELIER_HOSTNAME` environment variable.
+
+## Environment Variables
+
+Atelier Go supports several environment variables to customize its behavior:
+
+| Variable | Description |
+| :--- | :--- |
+| **`EDITOR`** | The command used to open folders (e.g., `nvim`, `code`). |
+| **`NO_NERD_FONTS`** | Set to any value to use standard ASCII characters instead of Nerd Font icons. |
+| **`ATELIER_HOSTNAME`** | Override the detected system hostname for host-specific configuration. |
+| **`ATELIER_CLIENT_ID`** | Used for session recovery on remote machines (see [Remote Work](#remote-work)). |
+| **`XDG_CONFIG_HOME`** | Custom location for configuration files (defaults to `~/.config`). |
+
 ## Usage
 
 ### Picker UI
 
 Running `atelier-go` without arguments (or using the `ui` command) opens an interactive TUI. The UI displays both your configured projects and your most frequent `zoxide` directories, including their shortened paths for easy identification.
+
+**Note:** Configured projects are always prioritized and shown at the top of the list, even when filtering.
+
+#### Icons
+
+By default, Atelier Go uses Nerd Font icons for folders, projects, and search. If you are not using a Nerd Font, you can disable these icons by setting the `NO_NERD_FONTS` environment variable:
+
+```bash
+export NO_NERD_FONTS=1
+```
 
 #### Triggers
 
