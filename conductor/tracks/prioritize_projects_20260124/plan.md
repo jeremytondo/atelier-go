@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Logic & Sorting Implementation' (Protocol in workflow.md) 42abb98
 
 ## Phase 2: UI Integration & Verification
-- [ ] Task: Ensure the UI model correctly handles the prioritized list without visual regressions.
-- [ ] Task: Write Tests: Verify the UI components render the sorted list as expected.
-- [ ] Task: Implement: Any necessary adjustments to `internal/ui/model.go` or `internal/ui/view.go` to support the prioritized list.
+- [x] Task: Ensure the UI model correctly handles the prioritized list without visual regressions. b0fa2af
+- [x] Task: Write Tests: Verify the UI components render the sorted list as expected. 0b80ae8
+- [x] Task: Implement: Any necessary adjustments to `internal/ui/model.go` or `internal/ui/view.go` to support the prioritized list. 0b80ae8
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: UI Integration & Verification' (Protocol in workflow.md)
