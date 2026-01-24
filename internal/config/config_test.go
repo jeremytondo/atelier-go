@@ -106,3 +106,24 @@ projects:
 		t.Errorf("expected 2 projects, got %d", len(cfg.Projects))
 	}
 }
+
+func TestLoadConfig_Invalid(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "atelier-test-invalid-*")
+	defer os.RemoveAll(tmpDir)
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	atelierDir := filepath.Join(tmpDir, "atelier-go")
+	os.MkdirAll(atelierDir, 0755)
+
+	// Invalid config (missing path)
+	content := `
+projects:
+  - name: invalid-prj
+    path: ""
+`
+	os.WriteFile(filepath.Join(atelierDir, "config.yaml"), []byte(content), 0644)
+
+	_, err := LoadConfig()
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+}
