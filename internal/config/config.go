@@ -13,25 +13,26 @@ import (
 // LoadConfig loads the configuration from the config directory.
 // It loads config.yaml first, then merges <hostname>.yaml if it exists.
 func LoadConfig() (*Config, error) {
+	v := viper.New()
+	SetDefaults(v)
+
 	configDir, err := GetConfigDir()
 	if err != nil {
 		return nil, err
 	}
 
-	// Load global config
-	vGlobal := viper.New()
-	vGlobal.SetConfigType("yaml")
-	vGlobal.AddConfigPath(configDir)
-	vGlobal.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(configDir)
+	v.SetConfigName("config")
 
-	if err := vGlobal.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read global config: %w", err)
 		}
 	}
 
 	var cfg Config
-	if err := vGlobal.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
 
@@ -46,10 +47,18 @@ func LoadConfig() (*Config, error) {
 		if err := vHost.ReadInConfig(); err == nil {
 			var hostCfg Config
 			if err := vHost.Unmarshal(&hostCfg); err == nil {
-				// Manually merge
+				// Manually merge to ensure slices and maps are handled correctly
 				cfg.Projects = mergeProjects(cfg.Projects, hostCfg.Projects)
 				cfg.Actions = MergeActions(cfg.Actions, hostCfg.Actions)
 				cfg.Theme = mergeTheme(cfg.Theme, hostCfg.Theme)
+				
+				// Handle other fields if necessary
+				if hostCfg.Editor != "" {
+					cfg.Editor = hostCfg.Editor
+				}
+				if hostCfg.ShellDefault != nil {
+					cfg.ShellDefault = hostCfg.ShellDefault
+				}
 			} else {
 				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
 			}
