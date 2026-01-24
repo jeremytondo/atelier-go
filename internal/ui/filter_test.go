@@ -39,6 +39,27 @@ func TestApplyLocationFilter(t *testing.T) {
 				"dotfiles",   // Zoxide, matches 'o'
 			},
 		},
+		{
+			name:  "only projects match",
+			query: "at",
+			expected: []string{
+				"atelier",
+			},
+		},
+		{
+			name:  "only directories match",
+			query: "dot",
+			expected: []string{
+				"dotfiles",
+			},
+		},
+		{
+			name:  "case insensitive match",
+			query: "WORK",
+			expected: []string{
+				"work",
+			},
+		},
 	}
 
 	for _, tt := range tests {
