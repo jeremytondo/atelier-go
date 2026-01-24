@@ -10,61 +10,29 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Project represents a defined project with a name and a filesystem path.
-type Project struct {
-	Name           string   `mapstructure:"name"`
-	Path           string   `mapstructure:"path"`
-	Actions        []Action `mapstructure:"actions"`
-	DefaultActions *bool    `mapstructure:"default-actions"`
-	ShellDefault   *bool    `mapstructure:"shell-default"`
-}
-
-// Action represents a runnable command associated with a project.
-type Action struct {
-	Name    string `mapstructure:"name"`
-	Command string `mapstructure:"command"`
-}
-
-// Config represents the application configuration.
-type Config struct {
-	Projects     []Project `mapstructure:"projects"`
-	Actions      []Action  `mapstructure:"actions"`
-	ShellDefault *bool     `mapstructure:"shell-default"`
-	Editor       string    `mapstructure:"editor"`
-	Theme        Theme     `mapstructure:"theme"`
-}
-
-// Theme holds color settings for the UI.
-type Theme struct {
-	Primary   string `mapstructure:"primary"`
-	Accent    string `mapstructure:"accent"`
-	Highlight string `mapstructure:"highlight"`
-	Text      string `mapstructure:"text"`
-	Subtext   string `mapstructure:"subtext"`
-}
-
 // LoadConfig loads the configuration from the config directory.
 // It loads config.yaml first, then merges <hostname>.yaml if it exists.
 func LoadConfig() (*Config, error) {
+	v := viper.New()
+	SetDefaults(v)
+
 	configDir, err := GetConfigDir()
 	if err != nil {
 		return nil, err
 	}
 
-	// Load global config
-	vGlobal := viper.New()
-	vGlobal.SetConfigType("yaml")
-	vGlobal.AddConfigPath(configDir)
-	vGlobal.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(configDir)
+	v.SetConfigName("config")
 
-	if err := vGlobal.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read global config: %w", err)
 		}
 	}
 
 	var cfg Config
-	if err := vGlobal.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
 
@@ -79,10 +47,7 @@ func LoadConfig() (*Config, error) {
 		if err := vHost.ReadInConfig(); err == nil {
 			var hostCfg Config
 			if err := vHost.Unmarshal(&hostCfg); err == nil {
-				// Manually merge
-				cfg.Projects = mergeProjects(cfg.Projects, hostCfg.Projects)
-				cfg.Actions = MergeActions(cfg.Actions, hostCfg.Actions)
-				cfg.Theme = mergeTheme(cfg.Theme, hostCfg.Theme)
+				cfg.Merge(hostCfg)
 			} else {
 				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
 			}
@@ -91,7 +56,26 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	return &cfg, nil
+}
+
+// Merge merges another configuration into the current one.
+// The other configuration takes precedence for scalar values and specific slice items.
+func (c *Config) Merge(other Config) {
+	c.Projects = mergeProjects(c.Projects, other.Projects)
+	c.Actions = MergeActions(c.Actions, other.Actions)
+	c.Theme = mergeTheme(c.Theme, other.Theme)
+
+	if other.Editor != "" {
+		c.Editor = other.Editor
+	}
+	if other.ShellDefault != nil {
+		c.ShellDefault = other.ShellDefault
+	}
 }
 
 // mergeTheme merges two themes. Host values override global.
