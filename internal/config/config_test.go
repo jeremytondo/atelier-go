@@ -51,6 +51,26 @@ theme:
 	}
 }
 
+func TestLoadConfig_NoFile(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "atelier-test-none-*")
+	defer os.RemoveAll(tmpDir)
+	os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	// Should use defaults from defaults.go
+	if cfg.Editor != "vim" {
+		t.Errorf("expected default editor vim, got %s", cfg.Editor)
+	}
+	// Verify corrected theme defaults
+	if cfg.Theme.Primary != "#89b4fa" {
+		t.Errorf("expected default theme.primary #89b4fa, got %s", cfg.Theme.Primary)
+	}
+}
+
 func TestLoadConfig_MergeProjects(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "atelier-test-merge-*")
 	defer os.RemoveAll(tmpDir)

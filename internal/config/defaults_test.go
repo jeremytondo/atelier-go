@@ -22,11 +22,11 @@ func TestSetDefaults(t *testing.T) {
 		key      string
 		expected string
 	}{
-		{"theme.primary", "#58a6ff"},
-		{"theme.accent", "#1f6feb"},
-		{"theme.highlight", "#238636"},
-		{"theme.text", "#c9d1d9"},
-		{"theme.subtext", "#8b949e"},
+		{"theme.primary", "#89b4fa"},
+		{"theme.accent", "#74c7ec"},
+		{"theme.highlight", "#cba6f7"},
+		{"theme.text", "#ffffff"},
+		{"theme.subtext", "240"},
 	}
 
 	for _, tt := range themeTests {

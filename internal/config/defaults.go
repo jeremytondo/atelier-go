@@ -10,9 +10,9 @@ func SetDefaults(v *viper.Viper) {
 	v.SetDefault("shell-default", false)
 
 	// Theme defaults
-	v.SetDefault("theme.primary", "#58a6ff")
-	v.SetDefault("theme.accent", "#1f6feb")
-	v.SetDefault("theme.highlight", "#238636")
-	v.SetDefault("theme.text", "#c9d1d9")
-	v.SetDefault("theme.subtext", "#8b949e")
+	v.SetDefault("theme.primary", "#89b4fa")
+	v.SetDefault("theme.accent", "#74c7ec")
+	v.SetDefault("theme.highlight", "#cba6f7")
+	v.SetDefault("theme.text", "#ffffff")
+	v.SetDefault("theme.subtext", "240")
 }
