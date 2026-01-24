@@ -22,12 +22,12 @@ This plan outlines the steps to refactor the configuration package to support mo
     - [x] Subtask: Create integration tests with mock config files to verify merging behavior (e.g., host config overriding base config).
 - [~] Task: Conductor - User Manual Verification 'Phase 2: Loading & Merging Logic' (Protocol in workflow.md)
 
-## Phase 3: Validation & Cleanup
+## Phase 3: Validation & Cleanup [checkpoint: bd83b02]
 - [x] Task: Implement configuration validation. 90203a7
     - [x] Subtask: Add a `Validate` method to the `Config` struct.
     - [x] Subtask: Ensure critical fields (e.g., project paths) are checked.
     - [x] Subtask: Write tests for validation edge cases.
-- [x] Task: Refactor existing code to use the new `config` package.
+- [x] Task: Refactor existing code to use the new `config` package. 90203a7
     - [x] Subtask: update `cmd/atelier-go/main.go` to use the new loader.
     - [x] Subtask: Update `internal/ui` or other consumers to use the new `Config` struct.
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Validation & Cleanup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Validation & Cleanup' (Protocol in workflow.md)
