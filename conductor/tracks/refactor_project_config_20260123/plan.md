@@ -23,11 +23,11 @@ This plan outlines the steps to refactor the configuration package to support mo
 - [~] Task: Conductor - User Manual Verification 'Phase 2: Loading & Merging Logic' (Protocol in workflow.md)
 
 ## Phase 3: Validation & Cleanup
-- [ ] Task: Implement configuration validation.
-    - [ ] Subtask: Add a `Validate` method to the `Config` struct.
-    - [ ] Subtask: Ensure critical fields (e.g., project paths) are checked.
-    - [ ] Subtask: Write tests for validation edge cases.
-- [ ] Task: Refactor existing code to use the new `config` package.
-    - [ ] Subtask: update `cmd/atelier-go/main.go` to use the new loader.
-    - [ ] Subtask: Update `internal/ui` or other consumers to use the new `Config` struct.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Validation & Cleanup' (Protocol in workflow.md)
+- [x] Task: Implement configuration validation. 90203a7
+    - [x] Subtask: Add a `Validate` method to the `Config` struct.
+    - [x] Subtask: Ensure critical fields (e.g., project paths) are checked.
+    - [x] Subtask: Write tests for validation edge cases.
+- [x] Task: Refactor existing code to use the new `config` package.
+    - [x] Subtask: update `cmd/atelier-go/main.go` to use the new loader.
+    - [x] Subtask: Update `internal/ui` or other consumers to use the new `Config` struct.
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Validation & Cleanup' (Protocol in workflow.md)
