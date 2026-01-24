@@ -6,10 +6,10 @@ This plan outlines the steps to refactor the configuration package to support mo
 - [x] Task: Define the `Config` struct and its children (`Theme`, `Project`, `Action`) in `internal/config/types.go` with appropriate mapstructure tags. c6052e6
     - [x] Subtask: Create `types.go` and define structs.
     - [x] Subtask: Write unit tests to verify struct tags and basic instantiation.
-- [~] Task: Implement default configuration values.
-    - [ ] Subtask: Create a `SetDefaults` function using Viper.
-    - [ ] Subtask: Write tests to ensure defaults are populated when no config file is present.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Struct Definition & Defaults' (Protocol in workflow.md)
+- [x] Task: Implement default configuration values. cdf31d4
+    - [x] Subtask: Create a `SetDefaults` function using Viper.
+    - [x] Subtask: Write tests to ensure defaults are populated when no config file is present.
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Struct Definition & Defaults' (Protocol in workflow.md)
 
 ## Phase 2: Loading & Merging Logic
 - [ ] Task: Implement base configuration loading.
