@@ -47,18 +47,7 @@ func LoadConfig() (*Config, error) {
 		if err := vHost.ReadInConfig(); err == nil {
 			var hostCfg Config
 			if err := vHost.Unmarshal(&hostCfg); err == nil {
-				// Manually merge to ensure slices and maps are handled correctly
-				cfg.Projects = mergeProjects(cfg.Projects, hostCfg.Projects)
-				cfg.Actions = MergeActions(cfg.Actions, hostCfg.Actions)
-				cfg.Theme = mergeTheme(cfg.Theme, hostCfg.Theme)
-				
-				// Handle other fields if necessary
-				if hostCfg.Editor != "" {
-					cfg.Editor = hostCfg.Editor
-				}
-				if hostCfg.ShellDefault != nil {
-					cfg.ShellDefault = hostCfg.ShellDefault
-				}
+				cfg.Merge(hostCfg)
 			} else {
 				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
 			}
@@ -72,6 +61,21 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// Merge merges another configuration into the current one.
+// The other configuration takes precedence for scalar values and specific slice items.
+func (c *Config) Merge(other Config) {
+	c.Projects = mergeProjects(c.Projects, other.Projects)
+	c.Actions = MergeActions(c.Actions, other.Actions)
+	c.Theme = mergeTheme(c.Theme, other.Theme)
+
+	if other.Editor != "" {
+		c.Editor = other.Editor
+	}
+	if other.ShellDefault != nil {
+		c.ShellDefault = other.ShellDefault
+	}
 }
 
 // mergeTheme merges two themes. Host values override global.
