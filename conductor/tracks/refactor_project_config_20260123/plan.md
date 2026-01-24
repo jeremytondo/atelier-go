@@ -3,10 +3,10 @@
 This plan outlines the steps to refactor the configuration package to support modular YAML configuration and host-specific overrides using Viper.
 
 ## Phase 1: Struct Definition & Defaults
-- [ ] Task: Define the `Config` struct and its children (`Theme`, `Project`, `Action`) in `internal/config/types.go` with appropriate mapstructure tags.
-    - [ ] Subtask: Create `types.go` and define structs.
-    - [ ] Subtask: Write unit tests to verify struct tags and basic instantiation.
-- [ ] Task: Implement default configuration values.
+- [x] Task: Define the `Config` struct and its children (`Theme`, `Project`, `Action`) in `internal/config/types.go` with appropriate mapstructure tags. c6052e6
+    - [x] Subtask: Create `types.go` and define structs.
+    - [x] Subtask: Write unit tests to verify struct tags and basic instantiation.
+- [~] Task: Implement default configuration values.
     - [ ] Subtask: Create a `SetDefaults` function using Viper.
     - [ ] Subtask: Write tests to ensure defaults are populated when no config file is present.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Struct Definition & Defaults' (Protocol in workflow.md)
