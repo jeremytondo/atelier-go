@@ -2,7 +2,7 @@
 
 ## Phase 1: Logic & Sorting Implementation
 - [x] Task: Update the internal location sorting logic to support multi-level sorting (Type then Score). 374479d
-- [ ] Task: Write Tests: Verify that projects are always sorted above directories in various scenarios (empty search, fuzzy match).
+- [x] Task: Write Tests: Verify that projects are always sorted above directories in various scenarios (empty search, fuzzy match). e19c0ab
 - [ ] Task: Implement: Modify the filtering/sorting function in `internal/ui/filter.go` (or equivalent) to enforce project priority.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Logic & Sorting Implementation' (Protocol in workflow.md)
 
