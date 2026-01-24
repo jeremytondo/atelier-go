@@ -2,6 +2,7 @@ package ui
 
 import (
 	"atelier-go/internal/locations"
+	"sort"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -48,6 +49,19 @@ func (m *Model) applyLocationFilter() tea.Cmd {
 			items = append(items, LocationItem{Location: m.allLocations[match.Index]})
 		}
 	}
+
+	// Sort: Projects first, then maintain relative order (by score or original)
+	sort.SliceStable(items, func(i, j int) bool {
+		li := items[i].(LocationItem)
+		lj := items[j].(LocationItem)
+		if li.IsProject() && !lj.IsProject() {
+			return true
+		}
+		if !li.IsProject() && lj.IsProject() {
+			return false
+		}
+		return false
+	})
 
 	m.locations.Select(0)
 	return m.locations.SetItems(items)

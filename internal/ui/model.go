@@ -3,6 +3,7 @@ package ui
 import (
 	"atelier-go/internal/config"
 	"atelier-go/internal/locations"
+	"sort"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -58,6 +59,19 @@ func NewModel(locs []locations.Location) *Model {
 	for i, loc := range locs {
 		items[i] = LocationItem{Location: loc}
 	}
+
+	// Sort: Projects first, then maintain relative order
+	sort.SliceStable(items, func(i, j int) bool {
+		li := items[i].(LocationItem)
+		lj := items[j].(LocationItem)
+		if li.IsProject() && !lj.IsProject() {
+			return true
+		}
+		if !li.IsProject() && lj.IsProject() {
+			return false
+		}
+		return false
+	})
 
 	// Initial layout and styles (will be updated on first resize)
 	layout := DefaultLayout(100, 30)
