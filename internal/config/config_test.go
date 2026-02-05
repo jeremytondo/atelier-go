@@ -1,9 +1,9 @@
 package config
 
 import (
-	"atelier-go/internal/utils"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -82,7 +82,7 @@ func TestLoadConfig_NoFile(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_MergeProjects(t *testing.T) {
+func TestLoadConfig_LocalOverride(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "atelier-test-merge-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
@@ -98,26 +98,34 @@ func TestLoadConfig_MergeProjects(t *testing.T) {
 
 	// Global config
 	globalContent := `
+editor: vim
 projects:
   - name: global-prj
     path: /global
+actions:
+  - name: a1
+    command: global
 `
 	if err := os.WriteFile(filepath.Join(atelierDir, "config.yaml"), []byte(globalContent), 0644); err != nil {
 		t.Fatalf("failed to write global config: %v", err)
 	}
 
-	// Host config
-	hostname, err := utils.GetHostname()
-	if err != nil {
-		t.Fatalf("failed to get hostname: %v", err)
-	}
-	hostContent := `
+	// Local override config
+	localContent := `
+editor: nano
 projects:
-  - name: host-prj
-    path: /host
+  - name: global-prj
+    path: /local
+  - name: local-prj
+    path: /local
+actions:
+  - name: a1
+    command: local
+  - name: a2
+    command: extra
 `
-	if err := os.WriteFile(filepath.Join(atelierDir, hostname+".yaml"), []byte(hostContent), 0644); err != nil {
-		t.Fatalf("failed to write host config: %v", err)
+	if err := os.WriteFile(filepath.Join(atelierDir, "config.local.yaml"), []byte(localContent), 0644); err != nil {
+		t.Fatalf("failed to write local config: %v", err)
 	}
 
 	cfg, err := LoadConfig()
@@ -125,10 +133,27 @@ projects:
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	// We need to decide if we WANT merging or overriding for slices.
-	// Usually Viper overrides slices.
+	if cfg.Editor != "nano" {
+		t.Errorf("expected editor nano, got %s", cfg.Editor)
+	}
+
 	if len(cfg.Projects) != 2 {
 		t.Errorf("expected 2 projects, got %d", len(cfg.Projects))
+	}
+	if cfg.Projects[0].Path != "/local" {
+		t.Errorf("expected global-prj overridden to /local, got %s", cfg.Projects[0].Path)
+	}
+	if cfg.Projects[1].Name != "local-prj" {
+		t.Errorf("expected local-prj appended, got %s", cfg.Projects[1].Name)
+	}
+	if len(cfg.Actions) != 2 {
+		t.Errorf("expected 2 actions, got %d", len(cfg.Actions))
+	}
+	if cfg.Actions[0].Command != "local" {
+		t.Errorf("expected a1 overridden to local, got %s", cfg.Actions[0].Command)
+	}
+	if cfg.Actions[1].Name != "a2" {
+		t.Errorf("expected a2 appended, got %s", cfg.Actions[1].Name)
 	}
 }
 
@@ -232,5 +257,77 @@ projects:
 	_, err = LoadConfig()
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
+	}
+}
+
+func TestLoadConfig_LocalOnly(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "atelier-test-local-only-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tmpDir)
+	})
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	atelierDir := filepath.Join(tmpDir, "atelier-go")
+	if err := os.MkdirAll(atelierDir, 0755); err != nil {
+		t.Fatalf("failed to create atelier dir: %v", err)
+	}
+
+	localContent := `
+editor: micro
+projects:
+  - name: local-prj
+    path: /local
+`
+	if err := os.WriteFile(filepath.Join(atelierDir, "config.local.yaml"), []byte(localContent), 0644); err != nil {
+		t.Fatalf("failed to write local config: %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if cfg.Editor != "micro" {
+		t.Errorf("expected editor micro, got %s", cfg.Editor)
+	}
+	if len(cfg.Projects) != 1 {
+		t.Errorf("expected 1 project, got %d", len(cfg.Projects))
+	}
+}
+
+func TestLoadConfig_InvalidLocal(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "atelier-test-local-invalid-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.RemoveAll(tmpDir)
+	})
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	atelierDir := filepath.Join(tmpDir, "atelier-go")
+	if err := os.MkdirAll(atelierDir, 0755); err != nil {
+		t.Fatalf("failed to create atelier dir: %v", err)
+	}
+
+	globalContent := `
+editor: vim
+`
+	if err := os.WriteFile(filepath.Join(atelierDir, "config.yaml"), []byte(globalContent), 0644); err != nil {
+		t.Fatalf("failed to write global config: %v", err)
+	}
+
+	invalidContent := "projects: ["
+	if err := os.WriteFile(filepath.Join(atelierDir, "config.local.yaml"), []byte(invalidContent), 0644); err != nil {
+		t.Fatalf("failed to write local config: %v", err)
+	}
+
+	_, err = LoadConfig()
+	if err == nil {
+		t.Fatal("expected local config error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to read local config") {
+		t.Fatalf("expected local config read error, got %v", err)
 	}
 }
