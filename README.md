@@ -11,7 +11,7 @@ It allows you to quickly jump into projects and apps, making it easier to work w
   - [General Settings](#general-settings)
   - [Theme](#theme)
   - [Projects](#projects)
-  - [Host-Specific Projects](#host-specific-projects)
+  - [Local Override Config](#local-override-config)
 - [Usage](#usage)
   - [Interactive UI](#interactive-ui)
   - [Sessions](#sessions)
@@ -97,21 +97,13 @@ projects:
 *   **`shell-default`**: Override the global `shell-default` setting for this specific project.
 *   **`actions`**: Custom commands for this project. These are merged with global actions if `default-actions` is `true`, with project-specific actions taking precedence.
 
-### Host-Specific Projects
+### Local Override Config
 
-If you work across multiple machines, you can define projects that only show up on a specific host. Create a YAML file named after the host in the same directory:
+If you want local tweaks that should not be committed to version control, add a `config.local.yaml` next to `config.yaml`:
 
-`~/.config/atelier-go/<hostname>.yaml`
+`~/.config/atelier-go/config.local.yaml`
 
-Settings in the host-specific file will be merged with the global `config.yaml`.
-
-To see what hostname Atelier Go is using for your current host, run:
-
-```bash
-atelier-go hostname
-```
-
-You can override the detected hostname by setting the `ATELIER_HOSTNAME` environment variable.
+Settings in `config.local.yaml` are merged after `config.yaml`, so local values override global scalar fields and merge lists using the same `Config.Merge` rules. This file is intended to be ignored by version control.
 
 ## Environment Variables
 
@@ -121,7 +113,6 @@ Atelier Go supports several environment variables to customize its behavior:
 | :--- | :--- |
 | **`EDITOR`** | The command used to open folders (e.g., `nvim`, `code`). |
 | **`NO_NERD_FONTS`** | Set to any value to use standard ASCII characters instead of Nerd Font icons. |
-| **`ATELIER_HOSTNAME`** | Override the detected system hostname for host-specific configuration. |
 | **`ATELIER_CLIENT_ID`** | Used for session recovery on remote machines (see [Remote Work](#remote-work)). |
 | **`XDG_CONFIG_HOME`** | Custom location for configuration files (defaults to `~/.config`). |
 
@@ -246,4 +237,3 @@ These are the projects that inspired this.
 - [ZMX](https://github.com/neurosnap/zmx): Used for managing sessions on Mac and Linux.
 - [Shpool](https://github.com/shell-pool/shpool): Another session manager. I used this originally, but switched to ZMX for cross-platform support.
 - [Sesh](https://github.com/joshmedeski/sesh): I've never actually used this, but saw some videos of it and it helped inspire how this works.
-

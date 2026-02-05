@@ -54,7 +54,6 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newUICmd())
 	cmd.AddCommand(newLocationsCmd())
 	cmd.AddCommand(newSessionsCmd())
-	cmd.AddCommand(newHostnameCmd())
 
 	return cmd
 }

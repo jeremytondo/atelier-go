@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"text/tabwriter"
 )
@@ -118,40 +116,6 @@ func SetTerminalTitle(title string) {
 		title = IconSSH + " " + title
 	}
 	fmt.Printf("\033]0;%s\007", title)
-}
-
-// GetHostname returns the effective hostname for configuration purposes.
-// It prioritizes the ATELIER_HOSTNAME environment variable.
-// On macOS, it attempts to use 'scutil --get LocalHostName' for a more stable identity.
-// If not set or not on macOS, it falls back to the system hostname.
-// The result is always lowercased.
-func GetHostname() (string, error) {
-	if h := os.Getenv("ATELIER_HOSTNAME"); h != "" {
-		return strings.ToLower(h), nil
-	}
-
-	var hostname string
-	if runtime.GOOS == "darwin" {
-		out, err := exec.Command("scutil", "--get", "LocalHostName").Output()
-		if err == nil {
-			hostname = strings.TrimSpace(string(out))
-		}
-	}
-
-	if hostname == "" {
-		h, err := os.Hostname()
-		if err != nil {
-			return "", err
-		}
-		hostname = h
-	}
-
-	// Split by dot and take the first part
-	if i := strings.Index(hostname, "."); i != -1 {
-		hostname = hostname[:i]
-	}
-
-	return strings.ToLower(hostname), nil
 }
 
 // GetStateDir returns the XDG state directory for atelier-go.

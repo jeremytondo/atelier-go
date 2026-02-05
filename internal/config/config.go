@@ -11,7 +11,7 @@ import (
 )
 
 // LoadConfig loads the configuration from the config directory.
-// It loads config.yaml first, then merges <hostname>.yaml if it exists.
+// It loads config.yaml first, then merges config.local.yaml if it exists.
 func LoadConfig() (*Config, error) {
 	v := viper.New()
 	SetDefaults(v)
@@ -36,24 +36,20 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
 
-	// Load host-specific config
-	hostname, _ := utils.GetHostname()
-	if hostname != "" {
-		vHost := viper.New()
-		vHost.SetConfigType("yaml")
-		vHost.AddConfigPath(configDir)
-		vHost.SetConfigName(hostname)
+	// Load local override config
+	vLocal := viper.New()
+	vLocal.SetConfigType("yaml")
+	vLocal.AddConfigPath(configDir)
+	vLocal.SetConfigName("config.local")
 
-		if err := vHost.ReadInConfig(); err == nil {
-			var hostCfg Config
-			if err := vHost.Unmarshal(&hostCfg); err == nil {
-				cfg.Merge(hostCfg)
-			} else {
-				return nil, fmt.Errorf("failed to unmarshal host config: %w", err)
-			}
-		} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read host config: %w", err)
+	if err := vLocal.ReadInConfig(); err == nil {
+		var localCfg Config
+		if err := vLocal.Unmarshal(&localCfg); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal local config: %w", err)
 		}
+		cfg.Merge(localCfg)
+	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		return nil, fmt.Errorf("failed to read local config: %w", err)
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -78,28 +74,28 @@ func (c *Config) Merge(other Config) {
 	}
 }
 
-// mergeTheme merges two themes. Host values override global.
-func mergeTheme(global, host Theme) Theme {
-	if host.Primary != "" {
-		global.Primary = host.Primary
+// mergeTheme merges two themes. Local values override global.
+func mergeTheme(global, local Theme) Theme {
+	if local.Primary != "" {
+		global.Primary = local.Primary
 	}
-	if host.Accent != "" {
-		global.Accent = host.Accent
+	if local.Accent != "" {
+		global.Accent = local.Accent
 	}
-	if host.Highlight != "" {
-		global.Highlight = host.Highlight
+	if local.Highlight != "" {
+		global.Highlight = local.Highlight
 	}
-	if host.Text != "" {
-		global.Text = host.Text
+	if local.Text != "" {
+		global.Text = local.Text
 	}
-	if host.Subtext != "" {
-		global.Subtext = host.Subtext
+	if local.Subtext != "" {
+		global.Subtext = local.Subtext
 	}
 	return global
 }
 
-// mergeProjects merges two project slices. Projects in host override global by name.
-func mergeProjects(global, host []Project) []Project {
+// mergeProjects merges two project slices. Projects in local override global by name.
+func mergeProjects(global, local []Project) []Project {
 	projectMap := make(map[string]int)
 	merged := make([]Project, len(global))
 	copy(merged, global)
@@ -108,13 +104,13 @@ func mergeProjects(global, host []Project) []Project {
 		projectMap[p.Name] = i
 	}
 
-	for _, hp := range host {
-		if idx, exists := projectMap[hp.Name]; exists {
+	for _, lp := range local {
+		if idx, exists := projectMap[lp.Name]; exists {
 			// Override
-			merged[idx] = hp
+			merged[idx] = lp
 		} else {
 			// Append
-			merged = append(merged, hp)
+			merged = append(merged, lp)
 		}
 	}
 
